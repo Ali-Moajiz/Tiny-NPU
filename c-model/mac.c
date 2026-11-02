@@ -1,98 +1,59 @@
 #include "mac.h"
 #include "logging.h"
 #include <stdio.h>
-#include <string.h>
 #include <inttypes.h>
-/* Column wave: on compute edge C_k (k=1..4) the four cells of column k fire together.
- * Cell(r,c) = psum_in + W[r][c]*I[r][c], where psum_in is the OLD psum of the cell to
- * its left, or for column 1 the output of the bias mux. */
-static void macArrayProcess(MacArray *a, const Control *ctrl, uint64_t cycle)
-{
-    RegValue w, x, b;
-    if (ctrl->wave < 1 || ctrl->wave > COMPUTE_WAVES ||
-        !bus_read(a->ports.weights, &w, sizeof w) || !bus_read(a->ports.inputs, &x, sizeof x) || !bus_read(a->ports.biases, &b, sizeof b) ||
-        !w.loaded || !x.loaded || !b.loaded)
-    {
-        a->error = true;
-        log_error(cycle, "MAC_array", "compute before W, I and Bias registers are loaded");
-        return;
+static void compute(MacArray *a,const Control *c,uint64_t cycle) {
+    RegBanks w,x,b;
+    if(c->bank>=2 || c->batch<1 || c->batch>4 || c->wave<1 || c->wave>4 ||
+       !bus_read(a->ports.weights,&w,sizeof w) || !bus_read(a->ports.inputs,&x,sizeof x) ||
+       !bus_read(a->ports.biases,&b,sizeof b) || !w.bank[c->bank].loaded || !x.bank[c->bank].loaded || !b.bank[c->bank].loaded ||
+       c->wave!=a->next_wave) {
+        a->error=true;log_error(cycle,"MAC_array","invalid compute order or unloaded operand bank");return;
     }
-    /* Snapshot ALL old registers before ANY cell updates. This is the edge. */
-    Mac old[4][4];
-    memcpy(old, a->cell, sizeof old);
-    unsigned c = ctrl->wave - 1;
-    for (unsigned r = 0; r < 4; r++)
-    {
-        if (c && !old[r][c - 1].valid)
-        {
-            a->error = true;
-            log_error(cycle, "MAC_array", "psum from left neighbour not valid");
-            return;
+    TileSums next={0};
+    unsigned k=c->wave-1;
+    /* Every result reads its OWN pre-edge accumulator, not an updated neighbour.
+     * The loop describes 16 parallel PEs, not 16 modeled clock cycles. */
+    for(unsigned r=0;r<4;r++) for(unsigned v=0;v<c->batch;v++) {
+        int8_t weight=unpack_i8(w.bank[c->bank].line.lane[r],k);
+        int8_t input=unpack_i8(x.bank[c->bank].line.lane[v],k);
+        if(k && !a->cell[r][v].valid) {
+            a->error=true;log_error(cycle,"MAC_array","missing prior accumulator");return;
         }
-        int8_t weight = unpack_i8(w.line.lane[r], c), input = unpack_i8(x.line.lane[r], c);
-        /* 2:1 bias mux exists only in front of column 1. */
-        int32_t incoming = c ? old[r][c - 1].psum : (ctrl->bias_enable ? unpack_i32(b.line.lane[r]) : 0);
-        int16_t product = (int16_t)((int)input * (int)weight);
-        int64_t sum = (int64_t)incoming + product;
-        /* Diagram forbids accumulator saturation. Reject unsupported overflow. */
-        if (sum < INT32_MIN || sum > INT32_MAX)
-        {
-            a->error = true;
-            log_error(cycle, "MAC_array", "INT32 overflow row=%u col=%u", r + 1, c + 1);
-            return;
+        int32_t incoming=k?a->cell[r][v].psum:unpack_i32(b.bank[c->bank].line.lane[r]);
+        int16_t product=(int16_t)((int)weight*input);
+        int64_t sum=(int64_t)incoming+product;
+        if(sum<INT32_MIN || sum>INT32_MAX) {
+            a->error=true;log_error(cycle,"MAC_array","INT32 overflow neuron=%u vector=%u",r+1,v+1);return;
         }
-        a->cell[r][c].psum = (int32_t)sum;
-        a->cell[r][c].valid = true;
-        a->updates++;
-        if (c == 3)
-            a->sums.row[r] = (int32_t)sum;
-        log_flow(cycle, "MAC_array", "MAC_UPDATE", "C%u MAC%u%u I=%d w=%d psum_in=%" PRId32 "%s product=%d psum_out=%" PRId32 " row_done=%u",
-                 ctrl->wave, r + 1, c + 1, (int)input, (int)weight, incoming, c ? "" : "(bias mux)", (int)product, (int32_t)sum, c == 3);
+        next.value[r][v]=(int32_t)sum;
+        log_flow(cycle,"MAC_array","MAC_UPDATE","L%u C%u PE(neuron=%u,vector=%u) x=%d w=%d acc_in=%" PRId32 "%s product=%d acc_out=%" PRId32 " done=%u",
+                 c->layer+1,c->wave,r+1,v+1,input,weight,incoming,k?"":"(bias mux)",product,(int32_t)sum,k==3);
     }
-    bus_write(a->ports.row_sums, &a->sums, sizeof a->sums);
+    /* Commit all local PE registers after evaluating every next value. */
+    for(unsigned r=0;r<4;r++) for(unsigned v=0;v<4;v++) {
+        a->cell[r][v].psum=next.value[r][v];a->cell[r][v].valid=v<c->batch;
+    }
+    a->sums=next;a->compute_cycles++;a->updates+=4*c->batch;
+    if(a->peak_active<4*c->batch) a->peak_active=4*c->batch;
+    a->next_wave=k==3?1:c->wave+1;
+    if(k==3) bus_write(a->ports.row_sums,&a->sums,sizeof a->sums);
+    log_flow(cycle,"MAC_array","UTILIZATION","active=%u/16 useful_MACs_this_clock=%u k=%u/4",4*c->batch,4*c->batch,c->wave);
 }
-void macArrayBusses(void *context, uint64_t cycle)
-{
-    MacArray *a = context;
-    Control c;
-    log_block_begin("MAC array (16 cells)");
-    if (bus_read(a->ports.control, &c, sizeof c))
-    {
-        if (c.tile_start)
-        {
-            for (unsigned r = 0; r < 4; r++)
-                for (unsigned col = 0; col < 4; col++)
-                    a->cell[r][col].valid = false;
-        }
-        if (c.kind == EDGE_COMPUTE)
-            macArrayProcess(a, &c, cycle);
-    }
-    log_port("CONTROL", a->ports.control, LOG_INPUT, LOG_BYTES);
-    log_port("W_REG[127:0]", a->ports.weights, LOG_INPUT, LOG_REG128);
-    log_port("I_REG[127:0]", a->ports.inputs, LOG_INPUT, LOG_REG128);
-    log_port("BIAS_REG[127:0]", a->ports.biases, LOG_INPUT, LOG_REG128);
-    log_port("ROW_SUMS", a->ports.row_sums, LOG_OUTPUT, LOG_I32X4);
-    if (logging_ports_enabled())
-        for (unsigned r = 0; r < 4; r++)
-        {
-            printf("  ROW%u", r + 1);
-            for (unsigned col = 0; col < 4; col++)
-            {
-                Mac *m = &a->cell[r][col];
-                printf(" | MAC%u%u psum=%" PRId32 " valid=%u", r + 1, col + 1, m->psum, m->valid);
-            }
-            putchar('\n');
-        }
+void macArrayBusses(void *context,uint64_t cycle) {
+    MacArray *a=context;Control c;
+    log_block_begin("4x4 outer-product MAC array / local INT32 accumulators");
+    if(bus_read(a->ports.control,&c,sizeof c) && c.kind==EDGE_COMPUTE) compute(a,&c,cycle);
+    log_port("CONTROL",a->ports.control,LOG_INPUT,LOG_BYTES);
+    log_port("W_BANKS",a->ports.weights,LOG_INPUT,LOG_BYTES);
+    log_port("I_BANKS",a->ports.inputs,LOG_INPUT,LOG_BYTES);
+    log_port("B_BANKS",a->ports.biases,LOG_INPUT,LOG_BYTES);
+    log_port("FINAL_ACC_TILE",a->ports.row_sums,LOG_OUTPUT,LOG_I32X16);
+    if(logging_ports_enabled()) for(unsigned r=0;r<4;r++) for(unsigned v=0;v<4;v++)
+        printf("  PE(neuron=%u,vector=%u) acc=%" PRId32 " valid=%u\n",r+1,v+1,a->cell[r][v].psum,a->cell[r][v].valid);
 }
-bool mac_array_init(MacArray *a, BusNetwork *n, const Bus *ctrl, const Bus *w, const Bus *x, const Bus *b)
-{
-    if (!a || !ctrl || !w || !x || !b)
-        return false;
-    *a = (MacArray){0};
-    a->ports.control = ctrl;
-    a->ports.weights = w;
-    a->ports.inputs = x;
-    a->ports.biases = b;
-    a->ports.row_sums = &a->sums_bus;
-    return bus_init(&a->sums_bus, sizeof(RowSums)) && bus_register_link(n, &a->sums_bus) && bus_register_module(n, macArrayBusses, a);
+bool mac_array_init(MacArray *a,BusNetwork *n,const Bus *control,const Bus *w,const Bus *x,const Bus *b) {
+    if(!a || !control || !w || !x || !b) return false;
+    *a=(MacArray){0};a->next_wave=1;a->ports.control=control;a->ports.weights=w;a->ports.inputs=x;a->ports.biases=b;a->ports.row_sums=&a->sums_bus;
+    return bus_init(&a->sums_bus,sizeof(TileSums)) && bus_register_link(n,&a->sums_bus) && bus_register_module(n,macArrayBusses,a);
 }

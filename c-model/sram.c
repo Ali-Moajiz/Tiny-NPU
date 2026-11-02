@@ -65,7 +65,7 @@ bool sram_init(Sram *s, BusNetwork *n, const Bus *ctrl, const Bus *data)
         }
         s->lines[SRAM_L1_CONFIG + l] = (Line128){{(uint32_t)requant_multiplier[l], requant_shift[l], relu_enable[l], 0}};
     }
-    const int8_t initial[4] = {1, 2, 3, 4};
-    s->lines[SRAM_ACTIVATION_A] = line_broadcast(pack_i8(initial));
+    const int8_t initial[4][4]={{1,2,3,4},{-1,0,1,2},{10,-20,30,-40},{127,-128,64,-64}};
+    for(unsigned v=0;v<4;v++) s->lines[SRAM_ACTIVATION_A].lane[v]=pack_i8(initial[v]);
     return bus_init(&s->response_bus, sizeof(Line128)) && bus_register_link(n, &s->response_bus) && bus_register_module(n, sramBusses, s);
 }

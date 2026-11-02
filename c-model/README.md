@@ -1,85 +1,176 @@
-# Tiny NPU — SRAM → type-select demux → W / I / Bias registers → 4x4 MAC array
+# Tiny NPU — ping-pong parameters, outer-product array, quantized layer bypass
 
-C99 cycle model of the updated draw.io architecture (page 01 of `Tiny-NPU.drawio`).
-The 4→4→4 network and the INT8/INT32 arithmetic are unchanged; the datapath,
-memory map and schedule are new. **An inference now takes 20 simulated cycles**
-(was 28), with 8 wide reads, 2 wide writes and 32 useful MAC updates.
+Updated from the attached `tiny-npu.zip`, retaining the block modules, generic bus scheduler,
+128-bit native SRAM port, trained parameters and optional terminal TB. No extra block C/H
+files are required. This is an architectural C99 simulator, **not a synthesizable HLS top**.
+The modeled clocks are explicit scheduling assumptions, not measured RTL timing.
 
-## Block map (diagram → source)
+The important change is the **meaning of a PE**: `PE[r][v]` now accumulates output neuron r
+for independent input vector v. The input/reduction index k advances across four clocks.
+The old `PE[r][k]` column-by-column/psum-right schedule has been replaced. This is an
+**outer-product engine with local accumulators**, not a diagonal systolic implementation.
 
-| Diagram block | File | Notes |
-|---|---|---|
-| NPU Controller / tile sequencer | controller.c/.h | Issues line address + 2-bit type; column-wave enables, POST, STORE |
-| SRAM macro 1024 x 128-bit | sram.c/.h | 10-bit **line** address, 16 byte-write enables, registered Q |
-| Type register + Data steering demux 1:4 | demux.c/.h | Type delayed one clock (= read latency) selects the destination |
-| Weight / Input / Bias / Config registers | reg128.c/.h | One generic 128-bit register, instantiated four times |
-| 4x4 MAC array (+ bias mux) | mac.c/.h | Cells hold only psum; W and I are byte lanes of their registers |
-| Activation x4 (ReLU/bypass) | activation.c/.h | ReLU flag comes from the Config register |
-| Requantize / clamp x4 | scale_clamp.c/.h | M and S come from the Config register |
-| Result FIFO | fifo.c/.h | Holds q; write data is `{q,q,q,q}` |
-| Wiring / run loop | npu.c/.h | Module order: controller, SRAM, demux, regs, array, activation, scale, FIFO |
-| Bus framework | bus.c/.h | Unchanged |
-
-`fetcher` is gone (as before). New: `demux.*`, `reg128.*`. Operand capture no
-longer lives in mac.c or controller.c.
-
-## Address map (10-bit line addresses, truth table from the diagram)
-
-| Type select | Range | Used here |
-|---|---|---|
-| 00 Weights | 0x000–0x1FF | L1 W = 0x000, L2 W = 0x001 |
-| 01 Inputs | 0x200–0x2FF | A = 0x200 (input / final output), B = 0x201 (hidden) |
-| 10 Biases | 0x300–0x37F | L1 = 0x300, L2 = 0x301 |
-| 11 Config | 0x380–0x38F | L1 = 0x380, L2 = 0x381 (range is my suggestion) |
-
-The controller checks that every address lies in the range owned by its type,
-and that a STORE target lies in the input range; a mismatch stops the run.
-These are line indices, **not** the old byte addresses.
-
-## Data layout
-
-`Line128.lane[0]` is bits 31:0. Fixed wiring: `W[r][c]` / `I[r][c]` = byte `4r+c`
-= lane r, byte c. Bias lane r = INT32 bias of row r. Config: lane0=M, lane1=S,
-lane2=ReLU, lane3=0 (validated when the Config register captures).
-
-**Input and result lines are stored replicated.** The array computes
-`out[r] = bias[r] + Σc W[r][c]·I[r][c]`, so a matrix-vector product needs
-`I[r][c] = x[c]` in every row: the 4-element vector is held in all four lanes.
-The host preload (tb.c) does this, and STORE writes `{q,q,q,q}` with BE=0xFFFF so
-the hidden vector can be read straight back as layer-2 input.
-
-## Schedule (per layer, 10 edges; layer 2 = cycles 11..20)
-
-| Edge | Action |
-|---|---|
-| E1 / E2 / E3 / E4 | Read W (00) / I (01) / B (10) / CFG (11); the tile start clears register-valid flags at E1 |
-| E2 / E3 / E4 / E5 | Demux steers and registers capture W / I / B / CFG (one clock after each read) |
-| E5..E8 | C1..C4: column c fires in all four rows; psum moves right one column per clock |
-| E9 | POST: ReLU/bypass, requantize, FIFO push |
-| E10 | STORE: 128-bit write, BE=0xFFFF, FIFO pop |
-
-CFG is only needed at POST, so its capture overlaps C1. Column 1 takes its
-psum_in from a 2:1 bias mux (`bias_enable` ? bias[r] : 0; always 1 for this network).
-Registered semantics are kept: SRAM Q, register outputs and row sums are
-registered links; control, demux outputs, activation and requantizer are wires.
-
-## Build / test
+## Run it
 
 ```sh
-make check                 # 5 notebook reference vectors, diffed against expected outputs
-make run TB=1 LOG=flow     # interactive: four INT8 values per line, q to quit
-make run TB=0 LOG=ports    # every block port and every register, each cycle
-make log TB=0 LOG=flow     # save flow.log
+make run TB=1 LOG=flow                  # one vector per inference, existing interaction
+make run TB=1 BATCH=4 LOG=flow          # collect FOUR independent vectors, then run a batch
+make run TB=0 BATCH=4 LOG=ports         # built-in distinct inputs, every block/port each edge
+make run BATCH=4 PREFETCH=0 FUSE=0      # disable both optimizations to compare scheduling
+make check                             # independent numerical + timing/masking/fault regressions
 ```
 
-`tests/vectors.expected` is generated from `npu_reference_vectors.json`
-(Python integer model), not from this C model. `[1,2,3,4]` gives `[0,1,-4,-1]`,
-packed `0xFFFC0100`.
+`LOG=flow|ports|both|none`; `TB=0|1`; `BATCH=1|2|3|4`; `PREFETCH=0|1`; `FUSE=0|1`.
+Every option combination has its own build directory; no clean is needed when changing flags.
+TB sources are absent from TB=0 builds. Neither build needs HLS tools or an HLS library.
+Inputs are already-quantized INT8 values, not original floating features. Host preprocessing
+metadata remains in `npu_preprocessing.json`. The terminal TB waits without advancing clocks,
+rejects malformed lines, and discards an incomplete batch on q/EOF. It resets the NPU and
+preloads SRAM between batches; parameter caching across separate TB runs is not claimed.
 
-## Limits
+For `BATCH=4`, enter four lines such as:
 
-Numerical contract unchanged: INT8×INT8→INT16, INT32 psums and biases, overflow
-is an error, `q = clamp_int8(round_ties_even(act·M / 2^S))`. This is an
-architectural C model, not RTL. 20 cycles assumes a one-cycle SRAM response, one
-request per clock, no stalls and a one-stage POST. Diagram pages 02–06 still show
-the old 7-cycle diagonal schedule and byte-address map.
+```text
+1 2 3 4
+-1 0 1 2
+10 -20 30 -40
+127 -128 64 -64
+```
+
+Each vector gets its own prediction. `[1,2,3,4]` still produces `[0,1,-4,-1]`.
+
+## Architecture and source map
+
+| Block | Source | Behavior |
+|---|---|---|
+| Controller / AGU | controller.c/.h | FSM, loaded-flag checks, background parameter reads, bank selection, final store |
+| SRAM / wrapper | sram.c/.h | 1024x128, one read OR write per clock, one-cycle read response, 16 byte enables |
+| Steering demux | demux.c/.h | Delay TYPE **and destination BANK** with the read; route previous response |
+| W/I/B/CFG register files | reg128.c/.h | Two 128-bit banks per object; hold unselected bank; reject active-bank overwrite |
+| 4x4 MAC engine | mac.c/.h | Row-weight and vector-column-input broadcasts; 16 local INT32 accumulators |
+| Activation | activation.c/.h | Registered INT32 tile; configured ReLU or bypass |
+| Requantizer | scale_clamp.c/.h | Registered INT8 tile, model-specific M/S, nearest-even rounding, saturation |
+| Result FIFO | fifo.c/.h | One 128-bit output tile retained until SRAM accepts STORE |
+| Integration | npu.c/.h | Connect the buses, register callbacks, initialize/run/check faults |
+| Generic framework | bus.c/.h | **Unchanged** callback traversal and registered/wire semantics |
+
+The supplied draw.io XML shows the current top-level and PE mapping. Older internal sheets
+are explicitly historical references. `CYCLE_TRACE.md` explains the actual 20-edge schedule.
+
+### Outer-product math
+
+For reduction step k and every active PE:
+
+```text
+weight[r] = W[r,k]                     # 4 selected INT8 weights; broadcast along rows
+input[v]  = X[v,k]                     # up to 4 selected INT8 inputs; broadcast down columns
+acc[r,v]  = (k==0 ? bias[r] : old_acc[r,v]) + weight[r] * input[v]
+```
+
+This computes `Y[r,v] = bias[r] + sum_k W[r,k]*X[v,k]`, equivalent to `X @ W.T` for
+batch-major Python arrays. Each weight is reused across up to four distinct vectors; each
+input is reused across four output neurons. A cell uses its OWN previous accumulator.
+The simulator evaluates every next sum before committing PE state. There is no horizontal
+combinational adder chain and no neighbor-to-neighbor input propagation in this mapping.
+Bias is added exactly once, at k=0. Masked vector columns do no useful MAC updates.
+
+A full batch of four has 16 useful MAC updates per compute clock; one vector has four.
+Broadcasting duplicate inputs into four lanes is **not** used to inflate utilization.
+Four parallel weight-byte muxes and four input-byte muxes select k from the local banks.
+The SRAM does not need to supply a new input or weight for each MAC update.
+
+### Ping-pong and prefetch
+
+Bank0 contains layer1 W/B/CFG; bank1 contains layer2 W/B/CFG. During layer1 compute clocks
+C1/C2/C3, the AGU issues layer2 W/B/CFG reads through the same native SRAM port. The delayed
+bank tag sends each response to the shadow bank while active bank0 is held stable.
+The controller selects bank1 only after the new input AND every parameter bank is loaded.
+This is local SRAM-to-register prefetch, **not an external DMA engine**, a CPU, or an IREE
+compiler. The two layer descriptors currently come from npu.c. More layers/tiles would need
+bank-generation/ownership management before reusing a physical bank.
+
+### Hidden tile bypass and registered stages
+
+With `FUSE=1`, the layer1 accumulator tile passes through ReLU, then model-specific INT8
+requantization. The registered INT8 tile feeds the inactive input bank through a 2:1 input
+mux: SRAM response or quantized hidden result. It does **not** forward raw INT32 sums to an
+INT8 layer. Hidden SRAM at0x201 is neither written nor read. Only final results enter FIFO.
+With `FUSE=0`, the existing SRAM write/read handoff remains available as a reference path.
+This implements the known two-layer dense/ReLU chain, not general compiler operator fusion.
+
+SRAM Q, register-bank Q, final MAC tile, activation tile, requantized tile and FIFO outputs
+are registered links. Control and demux routing are combinational wires. Thus a producer
+running earlier in the callback list cannot expose its newly captured register to a consumer
+at that same edge. No extra stages are hidden inside a tick counter. A 4x4 requantization
+stage assumes up to16 parallel scale paths; a smaller physical postprocessor would require
+serialization and different cycle counts. SRAM and scale-stage timing have not been synthesized.
+
+## Memory / register format
+
+| TYPE | SRAM line range | Example objects |
+|---|---|---|
+| 00 W | 0x000–0x1FF | W1=000, W2=001 |
+| 01 I | 0x200–0x2FF | X/final Y=200; unfused hidden=201 |
+| 10 B | 0x300–0x37F | B1=300, B2=301 |
+| 11 CFG | 0x380–0x38F | CFG1=380, CFG2=381 |
+
+Line addresses are 10-bit indices, equivalent byte address=`line<<4`. Total SRAM=16KiB.
+`Line128.lane[0]` is bits31:0, independent of host endian.
+
+- W lane r contains four signed bytes W[r,0..3].
+- I lane v contains four signed input features for independent vector v.
+- B lane r contains one signed INT32 accumulator-domain bias.
+- CFG: lane0 positive INT32 M, lane1 shift S0..62, lane2 ReLU0/1, lane3 reserved0.
+- Quantized output lane v contains four output neurons for vector v. No replicated lanes.
+- STORE byte enables: batch1=000F, batch2=00FF, batch3=0FFF, batch4=FFFF. Inactive bytes hold.
+
+Quantization contract is unchanged: signed INT8 multiply, INT32 accumulation with overflow
+reported as an error, then `clamp_int8(round_nearest_even((int64)activated * M / 2^S))`.
+No independent bias scales, dynamic per-input output scale, or float MAC arithmetic.
+
+## Measured simulator results
+
+For the supplied two-layer network, independent of valid batch width1..4:
+
+| PREFETCH | FUSE | Batch cycles | SRAM reads | SRAM writes |
+|---:|---:|---:|---:|---:|
+| 0 | 0 | 26 | 8 | 2 |
+| 0 | 1 | 24 | 7 | 1 |
+| 1 | 0 | 23 | 8 | 2 |
+| 1 | 1 | **20** | **7** | **1** |
+
+Each batch needs eight compute clocks (four per layer). Batch4 executes128 useful MAC
+updates: 100% utilization **during compute**, 40% over the complete20-cycle run.
+Batch1 executes32 updates:25% during compute,10% overall. Single-vector latency remains20
+cycles versus the uploaded model; no single-vector speedup is claimed. The array now processes
+four distinct vectors in those20 cycles rather than four serial20-cycle inferences.
+This is batch throughput; batch collection time, host preload, clock frequency and RTL area
+are excluded. The stages differ from the uploaded single-cycle POST, so compare actual work
+and full measured schedules rather than assuming every stage is unchanged.
+
+`make check` checks1044 batch inferences (2580 independent vectors), every intermediate MAC
+accumulator against a Python integer oracle, all four feature combinations, partial batches,
+untouched SRAM byte lanes, active-bank isolation, registered forwarding and timing statistics.
+It also tests invalid config/address, overflow, illegal bank overwrite and FIFO-underflow
+faults, and nearest-even boundaries for all shifts0..62. Expected fault diagnostics appear
+on stderr. The temporary check library uses UBSan. Compiler support for UBSan is required
+for this check target, not for running the model.
+
+## What this borrows from Coral
+
+The first-generation Edge TPU and the open RISC-V Coral NPU are different designs.
+Google's current matrix-engine documentation describes an **outer-product** formulation,
+vector-register source operands and local matrix accumulators; it is not evidence that this
+particular16-PE weight-stationary systolic grid is Coral's implementation. The published256
+MACs/clock is Coral's configured engine width, not a number this4x4 model can achieve.
+The official compiler description includes fusion and tiling; that does not imply every
+intermediate tensor of every network bypasses SRAM. Here, bypass is legal because the entire
+known hidden tile fits in local registers and matches layer2's quantization contract.
+
+Primary references:
+- https://developers.google.com/coral/guides/hardware/vme-matrix-engine
+- https://developers.google.com/coral/guides/hardware/datasheet
+- https://developers.googleblog.com/unifying-edge-ai-how-coral-npus-open-standard-brings-portable-energy-viable-intelligence-from-model-to-silicon/
+
+No RISC-V core, external DMA, compiler, variable-latency/backpressure protocol, automatic
+large-matrix tiler or HLS-synthesizable top has been added. These remain future work.

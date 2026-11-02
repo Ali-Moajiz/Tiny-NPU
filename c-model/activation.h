@@ -11,7 +11,7 @@ typedef struct
     } ports;
     bool error;
 } Activation;
-/* config = registered output of the Config register (lane2 = ReLU enable). */
+/* config = registered banked CFG; activation output is a registered tile. */
 bool activation_init(Activation *, BusNetwork *, const Bus *control, const Bus *row_sums, const Bus *config);
 void activationBusses(void *, uint64_t);
 #endif

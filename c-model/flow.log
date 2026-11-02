@@ -1,96 +1,101 @@
-[cycle=000000] [FLOW] [NPU         ] INITIALIZED        network=4->4->4 array=4x4 SRAM=1024x128 SRAM->demux->W/I/B/CFG regs->array layers=2
-[cycle=000001] [FLOW] [AGU         ] READ_ISSUE         layer=1 type=W(00) line_addr=0x000
-[cycle=000001] [FLOW] [AGU         ] EDGE               layer=1 edge=1 read=1 wave=0 POST=0 STORE=0
+[cycle=000000] [FLOW] [NPU         ] INITIALIZED        network=4->4->4 outer_product=4x4 batch=1 parameter_banks=2 prefetch=1 fuse=1
+[cycle=000001] [FLOW] [AGU         ] READ_ISSUE         layer=1 dest_bank=0 type=W(00) line_addr=0x000
+[cycle=000001] [FLOW] [AGU         ] EDGE               layer=1 bank=0 phase=LOAD k=0 read=1 batch=1
 [cycle=000001] [FLOW] [SRAM        ] READ_128           line_addr=0x000 type=0 Q=194E154B_3245F76F_D281DBCD_2BC71913 valid_cycle=2
-[cycle=000002] [FLOW] [AGU         ] READ_ISSUE         layer=1 type=I(01) line_addr=0x200
-[cycle=000002] [FLOW] [AGU         ] EDGE               layer=1 edge=2 read=1 wave=0 POST=0 STORE=0
-[cycle=000002] [FLOW] [SRAM        ] READ_128           line_addr=0x200 type=1 Q=04030201_04030201_04030201_04030201 valid_cycle=3
-[cycle=000002] [FLOW] [Demux       ] ROUTE              sel=00 -> Weight reg Q=194E154B_3245F76F_D281DBCD_2BC71913
-[cycle=000002] [FLOW] [Weight reg  ] CAPTURE            194E154B_3245F76F_D281DBCD_2BC71913
-[cycle=000003] [FLOW] [AGU         ] READ_ISSUE         layer=1 type=B(10) line_addr=0x300
-[cycle=000003] [FLOW] [AGU         ] EDGE               layer=1 edge=3 read=1 wave=0 POST=0 STORE=0
+[cycle=000002] [FLOW] [AGU         ] READ_ISSUE         layer=1 dest_bank=0 type=I(01) line_addr=0x200
+[cycle=000002] [FLOW] [AGU         ] EDGE               layer=1 bank=0 phase=LOAD k=0 read=1 batch=1
+[cycle=000002] [FLOW] [SRAM        ] READ_128           line_addr=0x200 type=1 Q=C040807F_D81EEC0A_020100FF_04030201 valid_cycle=3
+[cycle=000002] [FLOW] [Demux       ] ROUTE              type=0 dest_bank=0 Q=194E154B_3245F76F_D281DBCD_2BC71913
+[cycle=000002] [FLOW] [Weight banks] CAPTURE            bank=0 line=194E154B_3245F76F_D281DBCD_2BC71913
+[cycle=000003] [FLOW] [AGU         ] READ_ISSUE         layer=1 dest_bank=0 type=B(10) line_addr=0x300
+[cycle=000003] [FLOW] [AGU         ] EDGE               layer=1 bank=0 phase=LOAD k=0 read=1 batch=1
 [cycle=000003] [FLOW] [SRAM        ] READ_128           line_addr=0x300 type=2 Q=FFFFFFCA_000000B7_0000007C_0000002A valid_cycle=4
-[cycle=000003] [FLOW] [Demux       ] ROUTE              sel=01 -> Input reg Q=04030201_04030201_04030201_04030201
-[cycle=000003] [FLOW] [Input reg   ] CAPTURE            04030201_04030201_04030201_04030201
-[cycle=000004] [FLOW] [AGU         ] READ_ISSUE         layer=1 type=CFG(11) line_addr=0x380
-[cycle=000004] [FLOW] [AGU         ] EDGE               layer=1 edge=4 read=1 wave=0 POST=0 STORE=0
+[cycle=000003] [FLOW] [Demux       ] ROUTE              type=1 dest_bank=0 Q=C040807F_D81EEC0A_020100FF_04030201
+[cycle=000003] [FLOW] [Input banks ] CAPTURE            bank=0 line=C040807F_D81EEC0A_020100FF_04030201
+[cycle=000004] [FLOW] [AGU         ] READ_ISSUE         layer=1 dest_bank=0 type=CFG(11) line_addr=0x380
+[cycle=000004] [FLOW] [AGU         ] EDGE               layer=1 bank=0 phase=LOAD k=0 read=1 batch=1
 [cycle=000004] [FLOW] [SRAM        ] READ_128           line_addr=0x380 type=3 Q=00000000_00000001_00000026_5E84E645 valid_cycle=5
-[cycle=000004] [FLOW] [Demux       ] ROUTE              sel=10 -> Bias reg Q=FFFFFFCA_000000B7_0000007C_0000002A
-[cycle=000004] [FLOW] [Bias reg    ] CAPTURE            FFFFFFCA_000000B7_0000007C_0000002A
-[cycle=000005] [FLOW] [AGU         ] EDGE               layer=1 edge=5 read=0 wave=1 POST=0 STORE=0
-[cycle=000005] [FLOW] [Demux       ] ROUTE              sel=11 -> Config reg Q=00000000_00000001_00000026_5E84E645
-[cycle=000005] [FLOW] [Config reg  ] CAPTURE            00000000_00000001_00000026_5E84E645
-[cycle=000005] [FLOW] [MAC_array   ] MAC_UPDATE         C1 MAC11 I=1 w=19 psum_in=42(bias mux) product=19 psum_out=61 row_done=0
-[cycle=000005] [FLOW] [MAC_array   ] MAC_UPDATE         C1 MAC21 I=1 w=-51 psum_in=124(bias mux) product=-51 psum_out=73 row_done=0
-[cycle=000005] [FLOW] [MAC_array   ] MAC_UPDATE         C1 MAC31 I=1 w=111 psum_in=183(bias mux) product=111 psum_out=294 row_done=0
-[cycle=000005] [FLOW] [MAC_array   ] MAC_UPDATE         C1 MAC41 I=1 w=75 psum_in=-54(bias mux) product=75 psum_out=21 row_done=0
-[cycle=000006] [FLOW] [AGU         ] EDGE               layer=1 edge=6 read=0 wave=2 POST=0 STORE=0
-[cycle=000006] [FLOW] [MAC_array   ] MAC_UPDATE         C2 MAC12 I=2 w=25 psum_in=61 product=50 psum_out=111 row_done=0
-[cycle=000006] [FLOW] [MAC_array   ] MAC_UPDATE         C2 MAC22 I=2 w=-37 psum_in=73 product=-74 psum_out=-1 row_done=0
-[cycle=000006] [FLOW] [MAC_array   ] MAC_UPDATE         C2 MAC32 I=2 w=-9 psum_in=294 product=-18 psum_out=276 row_done=0
-[cycle=000006] [FLOW] [MAC_array   ] MAC_UPDATE         C2 MAC42 I=2 w=21 psum_in=21 product=42 psum_out=63 row_done=0
-[cycle=000007] [FLOW] [AGU         ] EDGE               layer=1 edge=7 read=0 wave=3 POST=0 STORE=0
-[cycle=000007] [FLOW] [MAC_array   ] MAC_UPDATE         C3 MAC13 I=3 w=-57 psum_in=111 product=-171 psum_out=-60 row_done=0
-[cycle=000007] [FLOW] [MAC_array   ] MAC_UPDATE         C3 MAC23 I=3 w=-127 psum_in=-1 product=-381 psum_out=-382 row_done=0
-[cycle=000007] [FLOW] [MAC_array   ] MAC_UPDATE         C3 MAC33 I=3 w=69 psum_in=276 product=207 psum_out=483 row_done=0
-[cycle=000007] [FLOW] [MAC_array   ] MAC_UPDATE         C3 MAC43 I=3 w=78 psum_in=63 product=234 psum_out=297 row_done=0
-[cycle=000008] [FLOW] [AGU         ] EDGE               layer=1 edge=8 read=0 wave=4 POST=0 STORE=0
-[cycle=000008] [FLOW] [MAC_array   ] MAC_UPDATE         C4 MAC14 I=4 w=43 psum_in=-60 product=172 psum_out=112 row_done=1
-[cycle=000008] [FLOW] [MAC_array   ] MAC_UPDATE         C4 MAC24 I=4 w=-46 psum_in=-382 product=-184 psum_out=-566 row_done=1
-[cycle=000008] [FLOW] [MAC_array   ] MAC_UPDATE         C4 MAC34 I=4 w=50 psum_in=483 product=200 psum_out=683 row_done=1
-[cycle=000008] [FLOW] [MAC_array   ] MAC_UPDATE         C4 MAC44 I=4 w=25 psum_in=297 product=100 psum_out=397 row_done=1
-[cycle=000009] [FLOW] [AGU         ] EDGE               layer=1 edge=9 read=0 wave=0 POST=1 STORE=0
-[cycle=000009] [FLOW] [Activation  ] RELU_BYPASS        relu=1 values=[112,0,683,397]
-[cycle=000009] [FLOW] [Scale       ] QUANTIZE           M=1585768005 S=38 rounding=nearest_ties_even q=[1,0,4,2]
-[cycle=000009] [FLOW] [FIFO        ] PUSH               word=0x02040001 valid=1
-[cycle=000010] [FLOW] [AGU         ] EDGE               layer=1 edge=10 read=0 wave=0 POST=0 STORE=1
-[cycle=000010] [FLOW] [SRAM        ] WRITE_128          line_addr=0x201 BE=0xFFFF line=02040001_02040001_02040001_02040001
-[cycle=000010] [FLOW] [FIFO        ] POP                packed SRAM store valid=0
-[cycle=000011] [FLOW] [AGU         ] READ_ISSUE         layer=2 type=W(00) line_addr=0x001
-[cycle=000011] [FLOW] [AGU         ] EDGE               layer=2 edge=1 read=1 wave=0 POST=0 STORE=0
-[cycle=000011] [FLOW] [SRAM        ] READ_128           line_addr=0x001 type=0 Q=0AD3D811_818787BF_111E26C2_3F011A03 valid_cycle=12
-[cycle=000012] [FLOW] [AGU         ] READ_ISSUE         layer=2 type=I(01) line_addr=0x201
-[cycle=000012] [FLOW] [AGU         ] EDGE               layer=2 edge=2 read=1 wave=0 POST=0 STORE=0
-[cycle=000012] [FLOW] [SRAM        ] READ_128           line_addr=0x201 type=1 Q=02040001_02040001_02040001_02040001 valid_cycle=13
-[cycle=000012] [FLOW] [Demux       ] ROUTE              sel=00 -> Weight reg Q=0AD3D811_818787BF_111E26C2_3F011A03
-[cycle=000012] [FLOW] [Weight reg  ] CAPTURE            0AD3D811_818787BF_111E26C2_3F011A03
-[cycle=000013] [FLOW] [AGU         ] READ_ISSUE         layer=2 type=B(10) line_addr=0x301
-[cycle=000013] [FLOW] [AGU         ] EDGE               layer=2 edge=3 read=1 wave=0 POST=0 STORE=0
-[cycle=000013] [FLOW] [SRAM        ] READ_128           line_addr=0x301 type=2 Q=FFFFFFB8_FFFFFFC4_00000070_FFFFFFF3 valid_cycle=14
-[cycle=000013] [FLOW] [Demux       ] ROUTE              sel=01 -> Input reg Q=02040001_02040001_02040001_02040001
-[cycle=000013] [FLOW] [Input reg   ] CAPTURE            02040001_02040001_02040001_02040001
-[cycle=000014] [FLOW] [AGU         ] READ_ISSUE         layer=2 type=CFG(11) line_addr=0x381
-[cycle=000014] [FLOW] [AGU         ] EDGE               layer=2 edge=4 read=1 wave=0 POST=0 STORE=0
-[cycle=000014] [FLOW] [SRAM        ] READ_128           line_addr=0x381 type=3 Q=00000000_00000000_00000026_44235E81 valid_cycle=15
-[cycle=000014] [FLOW] [Demux       ] ROUTE              sel=10 -> Bias reg Q=FFFFFFB8_FFFFFFC4_00000070_FFFFFFF3
-[cycle=000014] [FLOW] [Bias reg    ] CAPTURE            FFFFFFB8_FFFFFFC4_00000070_FFFFFFF3
-[cycle=000015] [FLOW] [AGU         ] EDGE               layer=2 edge=5 read=0 wave=1 POST=0 STORE=0
-[cycle=000015] [FLOW] [Demux       ] ROUTE              sel=11 -> Config reg Q=00000000_00000000_00000026_44235E81
-[cycle=000015] [FLOW] [Config reg  ] CAPTURE            00000000_00000000_00000026_44235E81
-[cycle=000015] [FLOW] [MAC_array   ] MAC_UPDATE         C1 MAC11 I=1 w=3 psum_in=-13(bias mux) product=3 psum_out=-10 row_done=0
-[cycle=000015] [FLOW] [MAC_array   ] MAC_UPDATE         C1 MAC21 I=1 w=-62 psum_in=112(bias mux) product=-62 psum_out=50 row_done=0
-[cycle=000015] [FLOW] [MAC_array   ] MAC_UPDATE         C1 MAC31 I=1 w=-65 psum_in=-60(bias mux) product=-65 psum_out=-125 row_done=0
-[cycle=000015] [FLOW] [MAC_array   ] MAC_UPDATE         C1 MAC41 I=1 w=17 psum_in=-72(bias mux) product=17 psum_out=-55 row_done=0
-[cycle=000016] [FLOW] [AGU         ] EDGE               layer=2 edge=6 read=0 wave=2 POST=0 STORE=0
-[cycle=000016] [FLOW] [MAC_array   ] MAC_UPDATE         C2 MAC12 I=0 w=26 psum_in=-10 product=0 psum_out=-10 row_done=0
-[cycle=000016] [FLOW] [MAC_array   ] MAC_UPDATE         C2 MAC22 I=0 w=38 psum_in=50 product=0 psum_out=50 row_done=0
-[cycle=000016] [FLOW] [MAC_array   ] MAC_UPDATE         C2 MAC32 I=0 w=-121 psum_in=-125 product=0 psum_out=-125 row_done=0
-[cycle=000016] [FLOW] [MAC_array   ] MAC_UPDATE         C2 MAC42 I=0 w=-40 psum_in=-55 product=0 psum_out=-55 row_done=0
-[cycle=000017] [FLOW] [AGU         ] EDGE               layer=2 edge=7 read=0 wave=3 POST=0 STORE=0
-[cycle=000017] [FLOW] [MAC_array   ] MAC_UPDATE         C3 MAC13 I=4 w=1 psum_in=-10 product=4 psum_out=-6 row_done=0
-[cycle=000017] [FLOW] [MAC_array   ] MAC_UPDATE         C3 MAC23 I=4 w=30 psum_in=50 product=120 psum_out=170 row_done=0
-[cycle=000017] [FLOW] [MAC_array   ] MAC_UPDATE         C3 MAC33 I=4 w=-121 psum_in=-125 product=-484 psum_out=-609 row_done=0
-[cycle=000017] [FLOW] [MAC_array   ] MAC_UPDATE         C3 MAC43 I=4 w=-45 psum_in=-55 product=-180 psum_out=-235 row_done=0
-[cycle=000018] [FLOW] [AGU         ] EDGE               layer=2 edge=8 read=0 wave=4 POST=0 STORE=0
-[cycle=000018] [FLOW] [MAC_array   ] MAC_UPDATE         C4 MAC14 I=2 w=63 psum_in=-6 product=126 psum_out=120 row_done=1
-[cycle=000018] [FLOW] [MAC_array   ] MAC_UPDATE         C4 MAC24 I=2 w=17 psum_in=170 product=34 psum_out=204 row_done=1
-[cycle=000018] [FLOW] [MAC_array   ] MAC_UPDATE         C4 MAC34 I=2 w=-127 psum_in=-609 product=-254 psum_out=-863 row_done=1
-[cycle=000018] [FLOW] [MAC_array   ] MAC_UPDATE         C4 MAC44 I=2 w=10 psum_in=-235 product=20 psum_out=-215 row_done=1
-[cycle=000019] [FLOW] [AGU         ] EDGE               layer=2 edge=9 read=0 wave=0 POST=1 STORE=0
-[cycle=000019] [FLOW] [Activation  ] RELU_BYPASS        relu=0 values=[120,204,-863,-215]
-[cycle=000019] [FLOW] [Scale       ] QUANTIZE           M=1143168641 S=38 rounding=nearest_ties_even q=[0,1,-4,-1]
-[cycle=000019] [FLOW] [FIFO        ] PUSH               word=0xFFFC0100 valid=1
-[cycle=000020] [FLOW] [AGU         ] EDGE               layer=2 edge=10 read=0 wave=0 POST=0 STORE=1
-[cycle=000020] [FLOW] [SRAM        ] WRITE_128          line_addr=0x200 BE=0xFFFF line=FFFC0100_FFFC0100_FFFC0100_FFFC0100
-[cycle=000020] [FLOW] [FIFO        ] POP                packed SRAM store valid=0
-[cycle=000020] [FLOW] [NPU         ] COMPLETE           cycles=20 reads=8 writes=2 mac_updates=32 output_line_addr=0x200 word=0xFFFC0100
+[cycle=000004] [FLOW] [Demux       ] ROUTE              type=2 dest_bank=0 Q=FFFFFFCA_000000B7_0000007C_0000002A
+[cycle=000004] [FLOW] [Bias banks  ] CAPTURE            bank=0 line=FFFFFFCA_000000B7_0000007C_0000002A
+[cycle=000005] [FLOW] [AGU         ] EDGE               layer=1 bank=0 phase=WAIT k=0 read=0 batch=1
+[cycle=000005] [FLOW] [Demux       ] ROUTE              type=3 dest_bank=0 Q=00000000_00000001_00000026_5E84E645
+[cycle=000005] [FLOW] [Config banks] CAPTURE            bank=0 line=00000000_00000001_00000026_5E84E645
+[cycle=000006] [FLOW] [AGU         ] BANK_SELECT        layer=1 active_bank=0 all W/I/B/CFG ready
+[cycle=000006] [FLOW] [AGU         ] READ_ISSUE         layer=2 dest_bank=1 type=W(00) line_addr=0x001 background prefetch
+[cycle=000006] [FLOW] [AGU         ] EDGE               layer=1 bank=0 phase=COMPUTE k=1 read=1 batch=1
+[cycle=000006] [FLOW] [SRAM        ] READ_128           line_addr=0x001 type=0 Q=0AD3D811_818787BF_111E26C2_3F011A03 valid_cycle=7
+[cycle=000006] [FLOW] [MAC_array   ] MAC_UPDATE         L1 C1 PE(neuron=1,vector=1) x=1 w=19 acc_in=42(bias mux) product=19 acc_out=61 done=0
+[cycle=000006] [FLOW] [MAC_array   ] MAC_UPDATE         L1 C1 PE(neuron=2,vector=1) x=1 w=-51 acc_in=124(bias mux) product=-51 acc_out=73 done=0
+[cycle=000006] [FLOW] [MAC_array   ] MAC_UPDATE         L1 C1 PE(neuron=3,vector=1) x=1 w=111 acc_in=183(bias mux) product=111 acc_out=294 done=0
+[cycle=000006] [FLOW] [MAC_array   ] MAC_UPDATE         L1 C1 PE(neuron=4,vector=1) x=1 w=75 acc_in=-54(bias mux) product=75 acc_out=21 done=0
+[cycle=000006] [FLOW] [MAC_array   ] UTILIZATION        active=4/16 useful_MACs_this_clock=4 k=1/4
+[cycle=000007] [FLOW] [AGU         ] READ_ISSUE         layer=2 dest_bank=1 type=B(10) line_addr=0x301 background prefetch
+[cycle=000007] [FLOW] [AGU         ] EDGE               layer=1 bank=0 phase=COMPUTE k=2 read=1 batch=1
+[cycle=000007] [FLOW] [SRAM        ] READ_128           line_addr=0x301 type=2 Q=FFFFFFB8_FFFFFFC4_00000070_FFFFFFF3 valid_cycle=8
+[cycle=000007] [FLOW] [Demux       ] ROUTE              type=0 dest_bank=1 Q=0AD3D811_818787BF_111E26C2_3F011A03
+[cycle=000007] [FLOW] [Weight banks] CAPTURE            bank=1 line=0AD3D811_818787BF_111E26C2_3F011A03
+[cycle=000007] [FLOW] [MAC_array   ] MAC_UPDATE         L1 C2 PE(neuron=1,vector=1) x=2 w=25 acc_in=61 product=50 acc_out=111 done=0
+[cycle=000007] [FLOW] [MAC_array   ] MAC_UPDATE         L1 C2 PE(neuron=2,vector=1) x=2 w=-37 acc_in=73 product=-74 acc_out=-1 done=0
+[cycle=000007] [FLOW] [MAC_array   ] MAC_UPDATE         L1 C2 PE(neuron=3,vector=1) x=2 w=-9 acc_in=294 product=-18 acc_out=276 done=0
+[cycle=000007] [FLOW] [MAC_array   ] MAC_UPDATE         L1 C2 PE(neuron=4,vector=1) x=2 w=21 acc_in=21 product=42 acc_out=63 done=0
+[cycle=000007] [FLOW] [MAC_array   ] UTILIZATION        active=4/16 useful_MACs_this_clock=4 k=2/4
+[cycle=000008] [FLOW] [AGU         ] READ_ISSUE         layer=2 dest_bank=1 type=CFG(11) line_addr=0x381 background prefetch
+[cycle=000008] [FLOW] [AGU         ] EDGE               layer=1 bank=0 phase=COMPUTE k=3 read=1 batch=1
+[cycle=000008] [FLOW] [SRAM        ] READ_128           line_addr=0x381 type=3 Q=00000000_00000000_00000026_44235E81 valid_cycle=9
+[cycle=000008] [FLOW] [Demux       ] ROUTE              type=2 dest_bank=1 Q=FFFFFFB8_FFFFFFC4_00000070_FFFFFFF3
+[cycle=000008] [FLOW] [Bias banks  ] CAPTURE            bank=1 line=FFFFFFB8_FFFFFFC4_00000070_FFFFFFF3
+[cycle=000008] [FLOW] [MAC_array   ] MAC_UPDATE         L1 C3 PE(neuron=1,vector=1) x=3 w=-57 acc_in=111 product=-171 acc_out=-60 done=0
+[cycle=000008] [FLOW] [MAC_array   ] MAC_UPDATE         L1 C3 PE(neuron=2,vector=1) x=3 w=-127 acc_in=-1 product=-381 acc_out=-382 done=0
+[cycle=000008] [FLOW] [MAC_array   ] MAC_UPDATE         L1 C3 PE(neuron=3,vector=1) x=3 w=69 acc_in=276 product=207 acc_out=483 done=0
+[cycle=000008] [FLOW] [MAC_array   ] MAC_UPDATE         L1 C3 PE(neuron=4,vector=1) x=3 w=78 acc_in=63 product=234 acc_out=297 done=0
+[cycle=000008] [FLOW] [MAC_array   ] UTILIZATION        active=4/16 useful_MACs_this_clock=4 k=3/4
+[cycle=000009] [FLOW] [AGU         ] EDGE               layer=1 bank=0 phase=COMPUTE k=4 read=0 batch=1
+[cycle=000009] [FLOW] [Demux       ] ROUTE              type=3 dest_bank=1 Q=00000000_00000000_00000026_44235E81
+[cycle=000009] [FLOW] [Config banks] CAPTURE            bank=1 line=00000000_00000000_00000026_44235E81
+[cycle=000009] [FLOW] [MAC_array   ] MAC_UPDATE         L1 C4 PE(neuron=1,vector=1) x=4 w=43 acc_in=-60 product=172 acc_out=112 done=1
+[cycle=000009] [FLOW] [MAC_array   ] MAC_UPDATE         L1 C4 PE(neuron=2,vector=1) x=4 w=-46 acc_in=-382 product=-184 acc_out=-566 done=1
+[cycle=000009] [FLOW] [MAC_array   ] MAC_UPDATE         L1 C4 PE(neuron=3,vector=1) x=4 w=50 acc_in=483 product=200 acc_out=683 done=1
+[cycle=000009] [FLOW] [MAC_array   ] MAC_UPDATE         L1 C4 PE(neuron=4,vector=1) x=4 w=25 acc_in=297 product=100 acc_out=397 done=1
+[cycle=000009] [FLOW] [MAC_array   ] UTILIZATION        active=4/16 useful_MACs_this_clock=4 k=4/4
+[cycle=000010] [FLOW] [AGU         ] EDGE               layer=1 bank=0 phase=ACTIVATE k=0 read=0 batch=1
+[cycle=000010] [FLOW] [Activation  ] REGISTER           layer=1 vector=1 relu=1 values=[112,0,683,397] valid_cycle=11
+[cycle=000011] [FLOW] [AGU         ] EDGE               layer=1 bank=0 phase=SCALE k=0 read=0 batch=1
+[cycle=000011] [FLOW] [Scale       ] QUANTIZE           layer=1 vector=1 M=1585768005 S=38 rounding=nearest_ties_even q=[1,0,4,2] valid_cycle=12
+[cycle=000012] [FLOW] [AGU         ] EDGE               layer=1 bank=0 phase=HANDOFF k=0 read=0 batch=1
+[cycle=000012] [FLOW] [Input banks ] FORWARD_HIDDEN     bank=1 line=00000000_00000000_00000000_02040001 SRAM bypass (already INT8 requantized)
+[cycle=000013] [FLOW] [AGU         ] BANK_SELECT        layer=2 active_bank=1 all W/I/B/CFG ready
+[cycle=000013] [FLOW] [AGU         ] EDGE               layer=2 bank=1 phase=COMPUTE k=1 read=0 batch=1
+[cycle=000013] [FLOW] [MAC_array   ] MAC_UPDATE         L2 C1 PE(neuron=1,vector=1) x=1 w=3 acc_in=-13(bias mux) product=3 acc_out=-10 done=0
+[cycle=000013] [FLOW] [MAC_array   ] MAC_UPDATE         L2 C1 PE(neuron=2,vector=1) x=1 w=-62 acc_in=112(bias mux) product=-62 acc_out=50 done=0
+[cycle=000013] [FLOW] [MAC_array   ] MAC_UPDATE         L2 C1 PE(neuron=3,vector=1) x=1 w=-65 acc_in=-60(bias mux) product=-65 acc_out=-125 done=0
+[cycle=000013] [FLOW] [MAC_array   ] MAC_UPDATE         L2 C1 PE(neuron=4,vector=1) x=1 w=17 acc_in=-72(bias mux) product=17 acc_out=-55 done=0
+[cycle=000013] [FLOW] [MAC_array   ] UTILIZATION        active=4/16 useful_MACs_this_clock=4 k=1/4
+[cycle=000014] [FLOW] [AGU         ] EDGE               layer=2 bank=1 phase=COMPUTE k=2 read=0 batch=1
+[cycle=000014] [FLOW] [MAC_array   ] MAC_UPDATE         L2 C2 PE(neuron=1,vector=1) x=0 w=26 acc_in=-10 product=0 acc_out=-10 done=0
+[cycle=000014] [FLOW] [MAC_array   ] MAC_UPDATE         L2 C2 PE(neuron=2,vector=1) x=0 w=38 acc_in=50 product=0 acc_out=50 done=0
+[cycle=000014] [FLOW] [MAC_array   ] MAC_UPDATE         L2 C2 PE(neuron=3,vector=1) x=0 w=-121 acc_in=-125 product=0 acc_out=-125 done=0
+[cycle=000014] [FLOW] [MAC_array   ] MAC_UPDATE         L2 C2 PE(neuron=4,vector=1) x=0 w=-40 acc_in=-55 product=0 acc_out=-55 done=0
+[cycle=000014] [FLOW] [MAC_array   ] UTILIZATION        active=4/16 useful_MACs_this_clock=4 k=2/4
+[cycle=000015] [FLOW] [AGU         ] EDGE               layer=2 bank=1 phase=COMPUTE k=3 read=0 batch=1
+[cycle=000015] [FLOW] [MAC_array   ] MAC_UPDATE         L2 C3 PE(neuron=1,vector=1) x=4 w=1 acc_in=-10 product=4 acc_out=-6 done=0
+[cycle=000015] [FLOW] [MAC_array   ] MAC_UPDATE         L2 C3 PE(neuron=2,vector=1) x=4 w=30 acc_in=50 product=120 acc_out=170 done=0
+[cycle=000015] [FLOW] [MAC_array   ] MAC_UPDATE         L2 C3 PE(neuron=3,vector=1) x=4 w=-121 acc_in=-125 product=-484 acc_out=-609 done=0
+[cycle=000015] [FLOW] [MAC_array   ] MAC_UPDATE         L2 C3 PE(neuron=4,vector=1) x=4 w=-45 acc_in=-55 product=-180 acc_out=-235 done=0
+[cycle=000015] [FLOW] [MAC_array   ] UTILIZATION        active=4/16 useful_MACs_this_clock=4 k=3/4
+[cycle=000016] [FLOW] [AGU         ] EDGE               layer=2 bank=1 phase=COMPUTE k=4 read=0 batch=1
+[cycle=000016] [FLOW] [MAC_array   ] MAC_UPDATE         L2 C4 PE(neuron=1,vector=1) x=2 w=63 acc_in=-6 product=126 acc_out=120 done=1
+[cycle=000016] [FLOW] [MAC_array   ] MAC_UPDATE         L2 C4 PE(neuron=2,vector=1) x=2 w=17 acc_in=170 product=34 acc_out=204 done=1
+[cycle=000016] [FLOW] [MAC_array   ] MAC_UPDATE         L2 C4 PE(neuron=3,vector=1) x=2 w=-127 acc_in=-609 product=-254 acc_out=-863 done=1
+[cycle=000016] [FLOW] [MAC_array   ] MAC_UPDATE         L2 C4 PE(neuron=4,vector=1) x=2 w=10 acc_in=-235 product=20 acc_out=-215 done=1
+[cycle=000016] [FLOW] [MAC_array   ] UTILIZATION        active=4/16 useful_MACs_this_clock=4 k=4/4
+[cycle=000017] [FLOW] [AGU         ] EDGE               layer=2 bank=1 phase=ACTIVATE k=0 read=0 batch=1
+[cycle=000017] [FLOW] [Activation  ] REGISTER           layer=2 vector=1 relu=0 values=[120,204,-863,-215] valid_cycle=18
+[cycle=000018] [FLOW] [AGU         ] EDGE               layer=2 bank=1 phase=SCALE k=0 read=0 batch=1
+[cycle=000018] [FLOW] [Scale       ] QUANTIZE           layer=2 vector=1 M=1143168641 S=38 rounding=nearest_ties_even q=[0,1,-4,-1] valid_cycle=19
+[cycle=000019] [FLOW] [AGU         ] EDGE               layer=2 bank=1 phase=HANDOFF k=0 read=0 batch=1
+[cycle=000019] [FLOW] [FIFO        ] PUSH               layer=2 vectors=1 valid_cycle=20
+[cycle=000020] [FLOW] [AGU         ] EDGE               layer=2 bank=1 phase=STORE k=0 read=0 batch=1
+[cycle=000020] [FLOW] [SRAM        ] WRITE_128          line_addr=0x200 BE=0x000F line=C040807F_D81EEC0A_020100FF_FFFC0100
+[cycle=000020] [FLOW] [FIFO        ] POP                tile consumed by SRAM store
+[cycle=000020] [FLOW] [NPU         ] COMPLETE           cycles=20 vectors=1 reads=7 writes=1 useful_mac_updates=32 compute_clocks=8 peak_active=4/16 overlap_reads=3 hidden_forwards=1
+[cycle=000020] [FLOW] [NPU         ] UTILIZATION        compute_only=25.00% whole_run=10.00% (includes loads/post/store)

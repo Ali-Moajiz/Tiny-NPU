@@ -17,8 +17,8 @@
 /* LINE addresses, one 128-bit line per tile object. */
 #define SRAM_L1_WEIGHTS 0x000u
 #define SRAM_L2_WEIGHTS 0x001u
-#define SRAM_ACTIVATION_A 0x200u /* initial x; final q overwrites it */
-#define SRAM_ACTIVATION_B 0x201u /* hidden vector */
+#define SRAM_ACTIVATION_A 0x200u /* up to four independent input vectors; final outputs overwrite active lanes */
+#define SRAM_ACTIVATION_B 0x201u /* hidden tile; untouched with fusion enabled */
 #define SRAM_L1_BIASES 0x300u
 #define SRAM_L2_BIASES 0x301u
 #define SRAM_L1_CONFIG 0x380u

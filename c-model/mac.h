@@ -1,29 +1,19 @@
 #ifndef MAC_H
 #define MAC_H
 #include "datapath.h"
-/* Each cell owns only a registered INT32 partial sum. W[r][c] and I[r][c] are
- * NOT copied into the cell: they are fixed byte lanes (4r+c) of the Weight and
- * Input registers. bias[r] reaches column 1 through a 2:1 mux (bias or 0).
- * The horizontal psum link is registered, not a combinational chain. */
-typedef struct
-{
-    int32_t psum;
-    bool valid;
-} Mac;
-typedef struct
-{
-    Mac cell[ARRAY_SIZE][ARRAY_SIZE];
-    RowSums sums;
+/* OUTER-PRODUCT mapping: cell[r][v] owns one output neuron's accumulator
+ * for independent input vector v. Its accumulator feeds back locally.
+ * W[r,k] broadcasts along row r; X[v,k] broadcasts along vector column v.
+ * This is deliberately NOT the old W[r,k] stationary/psum-right mapping. */
+typedef struct { int32_t psum; bool valid; } Mac;
+typedef struct {
+    Mac cell[4][4];
+    TileSums sums;
     Bus sums_bus;
-    struct
-    {
-        const Bus *control, *weights, *inputs, *biases;
-        Bus *row_sums;
-    } ports;
-    
+    struct { const Bus *control,*weights,*inputs,*biases; Bus *row_sums; } ports;
+    unsigned updates,compute_cycles,peak_active,next_wave;
     bool error;
-    unsigned updates;
 } MacArray;
-bool mac_array_init(MacArray *, BusNetwork *, const Bus *control, const Bus *weight_reg, const Bus *input_reg, const Bus *bias_reg);
-void macArrayBusses(void *, uint64_t);
+bool mac_array_init(MacArray *,BusNetwork *,const Bus *,const Bus *,const Bus *,const Bus *);
+void macArrayBusses(void *,uint64_t);
 #endif

@@ -1,0 +1,7 @@
+PASS: 1044 batch inferences / 2580 independent vectors; all intermediate MACs and final outputs match.
+PASS: masked writes, old-value register timing, bank isolation, hidden bypass, single-port overlap and fault checks.
+PASS: integer quantization boundary/tie tests for all shifts 0..62 (UBSan enabled).
+  PREFETCH=0 FUSE=0: 26 cycles per batch of 1..4 vectors
+  PREFETCH=0 FUSE=1: 24 cycles per batch of 1..4 vectors
+  PREFETCH=1 FUSE=0: 23 cycles per batch of 1..4 vectors
+  PREFETCH=1 FUSE=1: 20 cycles per batch of 1..4 vectors

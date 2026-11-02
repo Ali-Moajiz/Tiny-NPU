@@ -12,7 +12,30 @@ ifeq ($(filter $(TB),0 1),)
 $(error Invalid TB=$(TB). Use 0 or 1)
 endif
 
-# Independent directories isolate BOTH testbench and logging variants.
+# Hardware dimensions remain 4x4. BATCH masks 1..4 independent vector columns.
+BATCH ?= 1
+PREFETCH ?= 1
+FUSE ?= 1
+ifneq ($(words $(BATCH)),1)
+$(error BATCH must be one integer 1..4)
+endif
+ifeq ($(filter $(BATCH),1 2 3 4),)
+$(error BATCH must be 1, 2, 3 or 4)
+endif
+ifneq ($(words $(PREFETCH)),1)
+$(error PREFETCH must be 0 or 1)
+endif
+ifeq ($(filter $(PREFETCH),0 1),)
+$(error PREFETCH must be 0 or 1)
+endif
+ifneq ($(words $(FUSE)),1)
+$(error FUSE must be 0 or 1)
+endif
+ifeq ($(filter $(FUSE),0 1),)
+$(error FUSE must be 0 or 1)
+endif
+# Isolate every build option; changing flags needs no clean.
+
 LOG ?= flow
 ifneq ($(words $(LOG)),1)
 $(error LOG must contain exactly one mode: flow, ports, both or none)
@@ -22,8 +45,8 @@ $(error Invalid LOG=$(LOG). Use flow, ports, both or none)
 endif
 FLOW_ENABLED := $(if $(filter flow both,$(LOG)),1,0)
 PORTS_ENABLED := $(if $(filter ports both,$(LOG)),1,0)
-LOG_FLAGS = -DNPU_LOG_FLOW=$(FLOW_ENABLED) -DNPU_LOG_PORTS=$(PORTS_ENABLED)
-BUILD_DIR := build/tb$(TB)/$(LOG)
+LOG_FLAGS = -DNPU_LOG_FLOW=$(FLOW_ENABLED) -DNPU_LOG_PORTS=$(PORTS_ENABLED) -DNPU_BATCH=$(BATCH) -DNPU_PREFETCH=$(PREFETCH) -DNPU_FUSE=$(FUSE)
+BUILD_DIR := build/tb$(TB)/b$(BATCH)-p$(PREFETCH)-f$(FUSE)/$(LOG)
 TARGET := $(BUILD_DIR)/tiny_npu
 CORE_SOURCES := logging.c bus.c controller.c sram.c demux.c reg128.c mac.c activation.c scale_clamp.c fifo.c npu.c
 ifeq ($(TB),1)
@@ -47,12 +70,9 @@ run: $(TARGET)
 log: $(TARGET)
 	./$(TARGET) > "$(LOG_FILE)"
 	@echo "Saved $(LOG_FILE) (LOG=$(LOG))"
-# Regression: pipe the notebook reference vectors through the TB and diff against
-# the expected INT8 outputs from npu_reference_vectors.json (Python integer model).
+# End-to-end integer reference, partial batches, timing/port invariants and faults.
 check:
-	@$(MAKE) --no-print-directory TB=1 LOG=none all
-	@./build/tb1/none/tiny_npu < tests/vectors.in | grep 'Predicted output' | sed 's/.*: //' > build/vectors.got
-	@diff -u tests/vectors.expected build/vectors.got && echo "check: all $$(wc -l < tests/vectors.expected) reference vectors match"
+	python3 tests/check_model.py
 clean:
 	$(RM) -r build
 help:
@@ -63,6 +83,8 @@ help:
 	@echo 'make run LOG=ports  # all block ports every cycle'
 	@echo 'make run LOG=both   # both views'
 	@echo 'make run LOG=none   # silent on success; errors still go to stderr'
-	@echo 'make check          # run reference vectors, diff against expected outputs'
+	@echo 'make run TB=1 BATCH=4 LOG=flow  # four independent vectors; all 16 PEs active in compute'
+	@echo 'make run BATCH=4 PREFETCH=0 FUSE=0  # disable optimizations for comparison'
+	@echo 'make check          # numerical, timing, masking, bank and error regressions'
 	@echo 'make log LOG=flow   # save flow.log; replace LOG for another view'
 -include $(OBJECTS:.o=.d)

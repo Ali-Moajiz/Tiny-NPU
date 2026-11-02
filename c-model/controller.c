@@ -2,100 +2,113 @@
 #include "sram.h"
 #include "logging.h"
 #include <stdio.h>
-static const char *type_name(TypeSel t)
-{
-    static const char *names[] = {"W(00)", "I(01)", "B(10)", "CFG(11)"};
+static const char *type_name(TypeSel t) {
+    static const char *names[]={"W(00)","I(01)","B(10)","CFG(11)"};
     return names[t];
 }
-
-/* Edge map per layer (E1..E10):
- *   E1 read W   E2 read I   E3 read B   E4 read CFG
- *   E5..E8 compute C1..C4 (column wave, 4 rows in parallel)
- *   E9 POST     E10 STORE
- * Each read lands in its register one clock later (demux type register).
- * CFG is only needed at POST, so its read overlaps compute C1. */
-void controllerBusses(void *context, uint64_t cycle)
-{
-    Controller *c = context;
-    log_block_begin("Sequencer / AGU");
-    if (c->done)
-        return;
-
-    LayerConfig *cfg = &c->layers[c->layer];
-    Control out = {.kind = EDGE_LOAD, .layer = c->layer, .bias_enable = true, .tile_start = c->edge == 0};
-
-    if (c->edge < 4)
-    {
-        /* Type order follows the truth table: W, I, B, then CFG. */
-        const TypeSel types[4] = {TYPE_WEIGHT, TYPE_INPUT, TYPE_BIAS, TYPE_CONFIG};
-        const uint32_t addresses[4] = {cfg->weight_base, cfg->input_base, cfg->bias_base, cfg->config_base};
-        out.read_enable = true;
-        out.read_type = types[c->edge];
-        out.address = addresses[c->edge];
-        /* Self-check of the truth table: the address must lie in the range owned by the type. */
-        if (!sram_address_valid(out.address) || !sram_address_matches_type(out.address, out.read_type))
-        {
-            c->error = true;
-            log_error(cycle, "AGU", "line address 0x%03X is outside the range of type %s", out.address, type_name(out.read_type));
-            return;
-        }
-        log_flow(cycle, "AGU", "READ_ISSUE", "layer=%u type=%s line_addr=0x%03X", c->layer + 1, type_name(out.read_type), out.address);
+static bool issue(Controller *c,Control *out,unsigned layer,TypeSel type,uint64_t cycle) {
+    const LayerConfig *l=&c->layers[layer];
+    uint32_t addr=type==TYPE_WEIGHT?l->weight_base:type==TYPE_INPUT?l->input_base:
+                  type==TYPE_BIAS?l->bias_base:l->config_base;
+    if(!sram_address_valid(addr) || !sram_address_matches_type(addr,type)) {
+        c->error=true;log_error(cycle,"AGU","invalid address/type: 0x%03X %s",addr,type_name(type));return false;
     }
-    else if (c->edge >= 4 && c->edge <= 7)
-    {
-        out.kind = EDGE_COMPUTE;
-        out.wave = c->edge - 3;
-    }
-    else if (c->edge == 8)
-        out.kind = EDGE_POST;
-    else if (c->edge == 9)
-    {
-        uint8_t valid;
-        if (!bus_read(c->ports.fifo_valid, &valid, sizeof valid) || !valid)
-        {
-            c->error = true;
-            log_error(cycle, "AGU", "STORE without FIFO valid");
-            return;
-        }
-        /* The result becomes the next layer's input, so it must land in the input range. */
-        if (!sram_address_valid(cfg->output_base) || !sram_address_matches_type(cfg->output_base, TYPE_INPUT))
-        {
-            c->error = true;
-            log_error(cycle, "AGU", "output line 0x%03X is outside the input range", cfg->output_base);
-            return;
-        }
-        out.kind = EDGE_STORE;
-        out.address = cfg->output_base;
-        out.byte_enable = 0xFFFF; /* q replicated into all four lanes, see fifo.c */
-    }
-
-    bus_write(c->ports.control, &out, sizeof out);
-
-    log_flow(cycle, "AGU", "EDGE", "layer=%u edge=%u read=%u wave=%u POST=%u STORE=%u",
-             c->layer + 1, c->edge + 1, out.read_enable, out.wave, out.kind == EDGE_POST, out.kind == EDGE_STORE);
-    log_port("CONTROL", c->ports.control, LOG_OUTPUT, LOG_BYTES);
-    log_port("FIFO_VALID", c->ports.fifo_valid, LOG_INPUT, LOG_U8);
-
-    if (logging_ports_enabled())
-        printf("  RD=%u TYPE=%u ADDR=0x%03X TILE_START=%u BIAS_EN=%u BE=0x%04X\n",
-               out.read_enable, (unsigned)out.read_type, out.address, out.tile_start, out.bias_enable, out.byte_enable);
-
-    if (++c->edge == LAYER_TOTAL_EDGES)
-    {
-        c->edge = 0;
-        if (++c->layer == NETWORK_LAYERS)
-            c->done = true;
-    }
+    out->read_enable=true;out->read_type=type;out->read_bank=layer%2;out->address=addr;
+    log_flow(cycle,"AGU","READ_ISSUE","layer=%u dest_bank=%u type=%s line_addr=0x%03X%s",
+             layer+1,out->read_bank,type_name(type),addr,out->kind==EDGE_COMPUTE?" background prefetch":"");
+    return true;
 }
-
-bool controller_init(Controller *c, BusNetwork *n, const LayerConfig cfg[NETWORK_LAYERS], const Bus *valid)
-{
-    if (!c || !valid)
-        return false;
-    *c = (Controller){0};
-    c->ports.control = &c->control_bus;
-    c->ports.fifo_valid = valid;
-    for (unsigned l = 0; l < NETWORK_LAYERS; l++)
-        c->layers[l] = cfg[l];
-    return bus_init_wire(&c->control_bus, sizeof(Control)) && bus_register_link(n, &c->control_bus) && bus_register_module(n, controllerBusses, c);
+static bool ready(const Controller *c) {
+    const Bus *ports[]={c->ports.weights,c->ports.inputs,c->ports.biases,c->ports.config};
+    for(unsigned i=0;i<4;i++) {
+        RegBanks q;
+        if(!bus_read(ports[i],&q,sizeof q) || !q.bank[c->layer%2].loaded) return false;
+    }
+    return true;
+}
+static void issue_parameter(Controller *c,Control *out,unsigned layer,uint64_t cycle) {
+    static const TypeSel types[]={TYPE_WEIGHT,TYPE_BIAS,TYPE_CONFIG};
+    if(c->issued[layer]<3 && issue(c,out,layer,types[c->issued[layer]],cycle)) c->issued[layer]++;
+}
+void controllerBusses(void *context,uint64_t cycle) {
+    Controller *c=context;
+    log_block_begin("Controller / prefetch AGU");
+    if(c->done || c->error) return;
+    Control out={.kind=EDGE_WAIT,.layer=c->layer,.bank=c->layer%2,
+                 .batch=c->options.batch,.fuse=c->options.fuse};
+    switch(c->state) {
+    case CTRL_COLD: {
+        static const TypeSel types[]={TYPE_WEIGHT,TYPE_INPUT,TYPE_BIAS,TYPE_CONFIG};
+        out.kind=EDGE_LOAD;
+        if(!issue(c,&out,0,types[c->cold_read],cycle)) return;
+        if(++c->cold_read==4) {c->issued[0]=3;c->state=CTRL_READY;}
+        break;
+    }
+    case CTRL_READY:
+        /* Observe actual registered loaded flags, not just elapsed ticks. */
+        if(c->issued[c->layer]<3) issue_parameter(c,&out,c->layer,cycle);
+        else if(ready(c)) {
+            out.kind=EDGE_COMPUTE;out.wave=1;c->wave=2;c->state=CTRL_COMPUTE;
+            log_flow(cycle,"AGU","BANK_SELECT","layer=%u active_bank=%u all W/I/B/CFG ready",c->layer+1,out.bank);
+        } else c->wait_cycles++;
+        break;
+    case CTRL_COMPUTE:
+        out.kind=EDGE_COMPUTE;out.wave=c->wave++;
+        if(out.wave==COMPUTE_WAVES) c->state=CTRL_ACTIVATE;
+        break;
+    case CTRL_ACTIVATE: out.kind=EDGE_ACTIVATE;c->state=CTRL_SCALE;break;
+    case CTRL_SCALE: out.kind=EDGE_SCALE;c->state=CTRL_HANDOFF;break;
+    case CTRL_HANDOFF:
+        out.kind=EDGE_HANDOFF;
+        if(c->layer+1<NETWORK_LAYERS && c->options.fuse) {
+            c->layer++;c->state=CTRL_READY;
+        } else c->state=CTRL_STORE;
+        break;
+    case CTRL_STORE: {
+        uint8_t valid=0;
+        if(!bus_read(c->ports.fifo_valid,&valid,sizeof valid) || !valid) {
+            c->error=true;log_error(cycle,"AGU","STORE without registered FIFO valid");return;
+        }
+        out.kind=EDGE_STORE;out.address=c->layers[c->layer].output_base;
+        out.byte_enable=batch_byte_enable(c->options.batch);
+        if(!sram_address_valid(out.address) || !sram_address_matches_type(out.address,TYPE_INPUT)) {
+            c->error=true;log_error(cycle,"AGU","invalid result address");return;
+        }
+        if(c->layer+1==NETWORK_LAYERS) c->done=true;
+        else {c->layer++;c->state=CTRL_RELOAD_INPUT;}
+        break;
+    }
+    case CTRL_RELOAD_INPUT:
+        out.kind=EDGE_LOAD;
+        if(!issue(c,&out,c->layer,TYPE_INPUT,cycle)) return;
+        c->state=CTRL_READY;break;
+    }
+    /* AGU prefetch is independent of computation. The single SRAM port still
+     * accepts at most ONE read OR write per clock. Destination bank tags ensure
+     * shadow captures cannot overwrite parameters used by the active layer. */
+    if(out.kind==EDGE_COMPUTE && c->options.prefetch && out.layer+1<NETWORK_LAYERS && c->issued[out.layer+1]<3) {
+        issue_parameter(c,&out,out.layer+1,cycle);
+        if(out.read_enable) c->overlap_reads++;
+    }
+    if(c->error) return;
+    bus_write(c->ports.control,&out,sizeof out);
+    static const char *phases[]={"WAIT","LOAD","COMPUTE","ACTIVATE","SCALE","HANDOFF","STORE"};
+    log_flow(cycle,"AGU","EDGE","layer=%u bank=%u phase=%s k=%u read=%u batch=%u",
+             out.layer+1,out.bank,phases[out.kind],out.wave,out.read_enable,out.batch);
+    if(logging_ports_enabled()) printf("  PHASE=%s LAYER=%u ACTIVE_BANK=%u K=%u BATCH=%u RD=%u TYPE=%u DEST_BANK=%u ADDR=0x%03X BE=0x%04X FUSE=%u\n",
+        phases[out.kind],out.layer+1,out.bank,out.wave,out.batch,out.read_enable,(unsigned)out.read_type,out.read_bank,out.address,out.byte_enable,out.fuse);
+    log_port("CONTROL",c->ports.control,LOG_OUTPUT,LOG_BYTES);
+    log_port("FIFO_VALID",c->ports.fifo_valid,LOG_INPUT,LOG_U8);
+    log_port("W_BANKS",c->ports.weights,LOG_INPUT,LOG_BYTES);
+    log_port("I_BANKS",c->ports.inputs,LOG_INPUT,LOG_BYTES);
+    log_port("B_BANKS",c->ports.biases,LOG_INPUT,LOG_BYTES);
+    log_port("CFG_BANKS",c->ports.config,LOG_INPUT,LOG_BYTES);
+}
+bool controller_init(Controller *c,BusNetwork *n,const LayerConfig cfg[NETWORK_LAYERS],
+                     NpuOptions options,const Bus *valid,const Bus *w,const Bus *x,const Bus *b,const Bus *q) {
+    if(!c || !n || !cfg || !valid || !w || !x || !b || !q || options.batch<1 || options.batch>4) return false;
+    *c=(Controller){0};c->options=options;c->ports.control=&c->control_bus;
+    c->ports.fifo_valid=valid;c->ports.weights=w;c->ports.inputs=x;c->ports.biases=b;c->ports.config=q;
+    for(unsigned i=0;i<NETWORK_LAYERS;i++) c->layers[i]=cfg[i];
+    return bus_init_wire(&c->control_bus,sizeof(Control)) && bus_register_link(n,&c->control_bus) && bus_register_module(n,controllerBusses,c);
 }
