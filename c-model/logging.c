@@ -36,6 +36,10 @@ static void format_value(char text[96],const unsigned char *data,size_t size,Log
         uint32_t v[4];memcpy(v,data,sizeof v);
         snprintf(text,96,"0x%08" PRIX32 "%08" PRIX32 "%08" PRIX32 "%08" PRIX32,v[3],v[2],v[1],v[0]);return;
     }
+    if(type==LOG_REG128 && size==20) { /* Line128 followed by the model's 'loaded' flag */
+        uint32_t v[4];memcpy(v,data,sizeof v);
+        snprintf(text,96,"0x%08" PRIX32 "%08" PRIX32 "%08" PRIX32 "%08" PRIX32 " loaded=%u",v[3],v[2],v[1],v[0],(unsigned)data[16]);return;
+    }
     if(type==LOG_I32X4 && size==16) {
         int32_t v[4];memcpy(v,data,sizeof v);
         snprintf(text,96,"[%" PRId32 ",%" PRId32 ",%" PRId32 ",%" PRId32 "]",v[0],v[1],v[2],v[3]);return;
@@ -54,7 +58,7 @@ static void format_value(char text[96],const unsigned char *data,size_t size,Log
                     (type==LOG_U16 || type==LOG_OPERANDS)?2:4;
     if(size!=expected) { snprintf(text,96,"<payload size mismatch>"); return; }
     switch(type) {
-    case LOG_U128: case LOG_BYTES: case LOG_I32X4: case LOG_I8X4: snprintf(text,96,"<payload size mismatch>");break;
+    case LOG_U128: case LOG_REG128: case LOG_BYTES: case LOG_I32X4: case LOG_I8X4: snprintf(text,96,"<payload size mismatch>");break;
     case LOG_U8: {
         uint8_t value;memcpy(&value,data,sizeof(value));
         snprintf(text,96,"0x%02" PRIX8 " (%u)",value,(unsigned)value);break;

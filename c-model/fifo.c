@@ -8,7 +8,7 @@ void fifoBusses(void *context,uint64_t cycle)
         if(c.kind==EDGE_POST) {
             if(f->valid || !bus_read(f->ports.quantized,&q,sizeof q)) { f->error=true;log_error(cycle,"FIFO","invalid push or full FIFO");return; }
             f->word=pack_i8(q.row);f->valid=1;f->pushes++;
-            Line128 write_data={{f->word,0,0,0}};
+            Line128 write_data=line_broadcast(f->word); /* {q,q,q,q}: next layer needs I[r][c]=x[c] in every row */
             bus_write(f->ports.write_data,&write_data,sizeof write_data);
             log_flow(cycle,"FIFO","PUSH","word=0x%08X valid=1",f->word);
         } else if(c.kind==EDGE_STORE) {

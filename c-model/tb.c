@@ -64,10 +64,11 @@ static int tb_infer(const int8_t input[ARRAY_SIZE],uint64_t number)
         fprintf(stderr,"[TB] Invalid configured SRAM address.\n");return 1;
     }
 
-    /* Direct host preload, not a modeled SRAM transaction or an extra port. */
-    system.sram.lines[input_address/16].lane[0]=pack_i8(input);
-    printf("[TB] SRAM preload: byte_address=0x%04" PRIX32 " word=0x%08" PRIX32 " input=",
-           input_address,system.sram.lines[input_address/16].lane[0]);
+    /* Direct host preload, not a modeled SRAM transaction or an extra port.
+     * The vector is stored in all four lanes so that I[r][c] = x[c] for every row. */
+    system.sram.lines[input_address]=line_broadcast(pack_i8(input));
+    printf("[TB] SRAM preload: line_address=0x%03" PRIX32 " word=0x%08" PRIX32 " (x4 lanes) input=",
+           input_address,system.sram.lines[input_address].lane[0]);
     tb_print_vector(input);putchar('\n');
 
     uint64_t first_cycle=system.network.cycle;
@@ -75,7 +76,11 @@ static int tb_infer(const int8_t input[ARRAY_SIZE],uint64_t number)
         fprintf(stderr,"[TB] Inference did not complete; no prediction reported.\n");
         return 1;
     }
-    uint32_t packed=system.sram.lines[output_address/16].lane[0];
+    const Line128 *result=&system.sram.lines[output_address];
+    for(unsigned lane=1;lane<4;lane++) if(result->lane[lane]!=result->lane[0]) {
+        fprintf(stderr,"[TB] Result lanes differ; replicated store is inconsistent.\n");return 1;
+    }
+    uint32_t packed=result->lane[0];
     int8_t output[ARRAY_SIZE];
     for(unsigned i=0;i<ARRAY_SIZE;i++) output[i]=unpack_i8(packed,i);
 
@@ -83,7 +88,7 @@ static int tb_infer(const int8_t input[ARRAY_SIZE],uint64_t number)
     printf("Cycles: %" PRIu64 "\n",system.network.cycle-first_cycle);
     printf("Input:  ");tb_print_vector(input);putchar('\n');
     printf("Predicted output (quantized INT8): ");tb_print_vector(output);putchar('\n');
-    printf("SRAM result: byte_address=0x%04" PRIX32 " word=0x%08" PRIX32 "\n",
+    printf("SRAM result: line_address=0x%03" PRIX32 " word=0x%08" PRIX32 " (x4 lanes)\n",
            output_address,packed);
     puts("================================================\n");
     return 0;

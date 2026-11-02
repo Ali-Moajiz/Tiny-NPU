@@ -25,7 +25,7 @@ PORTS_ENABLED := $(if $(filter ports both,$(LOG)),1,0)
 LOG_FLAGS = -DNPU_LOG_FLOW=$(FLOW_ENABLED) -DNPU_LOG_PORTS=$(PORTS_ENABLED)
 BUILD_DIR := build/tb$(TB)/$(LOG)
 TARGET := $(BUILD_DIR)/tiny_npu
-CORE_SOURCES := logging.c bus.c controller.c sram.c mac.c activation.c scale_clamp.c fifo.c npu.c
+CORE_SOURCES := logging.c bus.c controller.c sram.c demux.c reg128.c mac.c activation.c scale_clamp.c fifo.c npu.c
 ifeq ($(TB),1)
 ENTRY_SOURCES := tb_main.c tb.c
 else
@@ -35,7 +35,7 @@ SOURCES := $(CORE_SOURCES) $(ENTRY_SOURCES)
 OBJECTS := $(SOURCES:%.c=$(BUILD_DIR)/%.o)
 LOG_FILE ?= $(LOG).log
 
-.PHONY: all run log clean help
+.PHONY: all run log check clean help
 all: $(TARGET)
 $(TARGET): $(OBJECTS)
 	$(CC) $(LDFLAGS) $(OBJECTS) -o $@
@@ -47,6 +47,12 @@ run: $(TARGET)
 log: $(TARGET)
 	./$(TARGET) > "$(LOG_FILE)"
 	@echo "Saved $(LOG_FILE) (LOG=$(LOG))"
+# Regression: pipe the notebook reference vectors through the TB and diff against
+# the expected INT8 outputs from npu_reference_vectors.json (Python integer model).
+check:
+	@$(MAKE) --no-print-directory TB=1 LOG=none all
+	@./build/tb1/none/tiny_npu < tests/vectors.in | grep 'Predicted output' | sed 's/.*: //' > build/vectors.got
+	@diff -u tests/vectors.expected build/vectors.got && echo "check: all $$(wc -l < tests/vectors.expected) reference vectors match"
 clean:
 	$(RM) -r build
 help:
@@ -57,5 +63,6 @@ help:
 	@echo 'make run LOG=ports  # all block ports every cycle'
 	@echo 'make run LOG=both   # both views'
 	@echo 'make run LOG=none   # silent on success; errors still go to stderr'
+	@echo 'make check          # run reference vectors, diff against expected outputs'
 	@echo 'make log LOG=flow   # save flow.log; replace LOG for another view'
 -include $(OBJECTS:.o=.d)

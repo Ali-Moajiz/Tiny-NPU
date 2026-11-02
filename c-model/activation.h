@@ -1,11 +1,17 @@
 #ifndef ACTIVATION_H
 #define ACTIVATION_H
 #include "datapath.h"
-typedef struct {
+typedef struct
+{
     Bus output_bus;
-    struct { const Bus *control,*row_sums;Bus *activated; } ports;
+    struct
+    {
+        const Bus *control, *row_sums, *config;
+        Bus *activated;
+    } ports;
     bool error;
 } Activation;
-bool activation_init(Activation *,BusNetwork *,const Bus *,const Bus *);
-void activationBusses(void *,uint64_t);
+/* config = registered output of the Config register (lane2 = ReLU enable). */
+bool activation_init(Activation *, BusNetwork *, const Bus *control, const Bus *row_sums, const Bus *config);
+void activationBusses(void *, uint64_t);
 #endif
