@@ -34,7 +34,8 @@ perf.data*
 #   .vscode/*
 #   !.vscode/tasks.json
 #   !.vscode/launch.json
-.vscode/
+.vscode/*
+!.vscode/extensions.json
 .idea/
 *.swp
 *~

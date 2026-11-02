@@ -1,6 +1,6 @@
 # Tiny NPU — SRAM → type-select demux → W / I / Bias registers → 4x4 MAC array
 
-C99 cycle model of the updated draw.io architecture (page 01 of `Tiny-NPUdrawio`).
+C99 cycle model of the updated draw.io architecture (page 01 of `Tiny-NPU.drawio`).
 The 4→4→4 network and the INT8/INT32 arithmetic are unchanged; the datapath,
 memory map and schedule are new. **An inference now takes 20 simulated cycles**
 (was 28), with 8 wide reads, 2 wide writes and 32 useful MAC updates.
