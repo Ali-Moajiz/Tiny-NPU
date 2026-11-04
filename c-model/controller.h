@@ -1,22 +1,32 @@
 #ifndef CONTROLLER_H
 #define CONTROLLER_H
-#include "datapath.h"
-typedef enum { CTRL_COLD,CTRL_READY,CTRL_COMPUTE,CTRL_ACTIVATE,
-               CTRL_SCALE,CTRL_HANDOFF,CTRL_STORE,CTRL_RELOAD_INPUT } ControllerState;
+#include "signals.h"
+#include "framework.h"
+
+#define SCHEDULE_CAPACITY 32u
 typedef struct {
-    Bus control_bus;
-    struct {
-        Bus *control;
-        const Bus *fifo_valid,*weights,*inputs,*biases,*config;
-    } ports;
+    bool valid;
+    TypeSel type;
+    unsigned bank;
+} ReadTag;
+typedef struct {
+    unsigned pc, overlap_reads;
+    ReadTag tag;
+    bool done;
+} ControllerRegs;
+typedef struct {
+    struct { ControlBus *control; } out;
+} ControllerPorts;
+typedef struct {
     LayerConfig layers[NETWORK_LAYERS];
     NpuOptions options;
-    ControllerState state;
-    unsigned layer,cold_read,wave,issued[NETWORK_LAYERS];
-    unsigned wait_cycles,overlap_reads;
-    bool done,error;
+    Control words[SCHEDULE_CAPACITY];
+    unsigned length;
+    ControllerRegs regs;
+    ControllerPorts ports;
 } Controller;
-bool controller_init(Controller *,BusNetwork *,const LayerConfig[NETWORK_LAYERS],
-                     NpuOptions,const Bus *,const Bus *,const Bus *,const Bus *,const Bus *);
-void controllerBusses(void *,uint64_t);
+
+bool controller_init(Controller *, const LayerConfig *, NpuOptions);
+bool controller_validate(const Controller *);
+extern const BlockOps controller_ops;
 #endif

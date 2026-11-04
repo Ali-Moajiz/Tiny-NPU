@@ -1,19 +1,33 @@
 #ifndef REG128_H
 #define REG128_H
-#include "datapath.h"
-/* Two physical 128-bit banks per object. Registered Q is published every edge;
- * a consumer never observes a value captured at that SAME edge.
- * Input bank D mux: tagged SRAM response OR registered requantized hidden tile.
- * Parameter bank D: tagged SRAM response. Unselected banks retain their bits. */
-typedef struct {
+#include "signals.h"
+#include "framework.h"
+
+typedef struct
+{
+    struct
+    {
+        const ControlBus *control;
+        const TileSignalBus *response, *hidden;
+    } in;
+    struct
+    {
+        TileSignalBus *selected;
+    } out;
+} Reg128Ports;
+
+typedef struct
+{
+    RegBanks banks;
+    unsigned captures, forwards;
+} Reg128Regs;
+typedef struct
+{
+    Reg128Ports ports;
+    Reg128Regs regs;
     const char *name;
     TypeSel type;
-    Bus out_bus;
-    struct { const Bus *control,*in,*forwarded; Bus *out; } ports;
-    RegBanks value;
-    unsigned captures,forwards;
-    bool error;
 } Reg128;
-bool reg128_init(Reg128 *,BusNetwork *,const char *,TypeSel,const Bus *,const Bus *,const Bus *);
-void reg128Busses(void *,uint64_t);
+
+extern const BlockOps reg128_ops;
 #endif

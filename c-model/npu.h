@@ -2,26 +2,36 @@
 #define NPU_H
 #include "controller.h"
 #include "sram.h"
-#include "demux.h"
 #include "reg128.h"
 #include "mac.h"
-#include "activation.h"
 #include "scale_clamp.h"
-#include "fifo.h"
+
 typedef struct {
-    BusNetwork network;
-    Controller controller;
     Sram sram;
-    Demux demux;
-    Reg128 reg_w,reg_i,reg_b,reg_cfg;
+    Reg128 reg_w, reg_i, reg_b, reg_cfg;
     MacArray array;
-    Activation activation;
-    ScaleClamp scale;
-    ResultFifo fifo;
+    PostProcess post;
+} DataPath;
+
+typedef struct {
+    ControlBus control;
+    TileSignalBus sram_response, weights, inputs, biases, config, post_result;
+    AccSignalBus mac_sums;
+} NpuBuses;
+
+/* Bus endpoints point into this instance. Initialize it at its final address. */
+typedef struct {
+    uint64_t cycle;
+    BusContext bus_context;
+    NpuBuses buses;
+    Controller controller;
+    DataPath data;
     bool error;
 } Npu;
+
 typedef enum { NPU_RUN_ERROR,NPU_RUN_COMPLETE,NPU_RUN_LIMIT } NpuRunStatus;
 bool npu_init(Npu *);
-bool npu_init_options(Npu *,NpuOptions);
-NpuRunStatus npu_run(Npu *,uint64_t);
+bool npu_init_options(Npu *, NpuOptions);
+bool npu_step(Npu *);
+NpuRunStatus npu_run(Npu *, uint64_t);
 #endif

@@ -1,6 +1,7 @@
 #ifndef SRAM_H
 #define SRAM_H
-#include "datapath.h"
+#include "signals.h"
+#include "framework.h"
 #define SRAM_LINES 1024u /* 10-bit line address */
 #define SRAM_BYTES (16u * SRAM_LINES)
 
@@ -24,19 +25,6 @@
 #define SRAM_L1_CONFIG 0x380u
 #define SRAM_L2_CONFIG 0x381u
 
-typedef struct
-{
-    Line128 lines[SRAM_LINES];
-    Bus response_bus;
-    struct
-    {
-        const Bus *control, *write_data;
-        Bus *read_response;
-    } ports;
-    unsigned reads, writes;
-    bool error;
-} Sram;
-
 static inline bool sram_address_valid(uint32_t address)
 {
     return address < SRAM_LINES;
@@ -57,6 +45,33 @@ static inline bool sram_address_matches_type(uint32_t a, TypeSel t)
     }
     return false;
 }
-bool sram_init(Sram *, BusNetwork *, const Bus *control, const Bus *write_data);
-void sramBusses(void *, uint64_t);
+typedef struct
+{
+    struct
+    {
+        const ControlBus *control;
+        const TileSignalBus *result;
+    } in;
+    struct
+    {
+        TileSignalBus *response;
+    } out;
+} SramPorts;
+
+typedef struct
+{
+    Line128 lines[SRAM_LINES];
+    Line128 response;
+    bool response_valid;
+    unsigned reads, writes;
+} SramRegs;
+
+typedef struct
+{
+    SramPorts ports;
+    SramRegs regs;
+} Sram;
+
+void sram_init(Sram *);
+extern const BlockOps sram_ops;
 #endif

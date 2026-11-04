@@ -4,53 +4,57 @@
 #include <stddef.h>
 #include <stdint.h>
 
-/* GENERIC simulation transport. No controller/MAC/SRAM signal names here.
- * One Bus carries any fixed-size C payload between a producer and consumers.
- * Registered values persist; valid is an event flag, expiring unless rewritten.
- * Wires carry combinational controls/data within a cycle, in traversal order.
- * Do not put pointers in payloads: memcpy copies a value, not pointed-to data.
- */
-#define BUS_MAX_PAYLOAD 64
-#define BUS_MAX_LINKS 32
-#define BUS_MAX_MODULES 32
+typedef enum
+{
+    BUS_IDLE,
+    BUS_PUBLISH,
+    BUS_EVAL,
+    BUS_CHECK,
+    BUS_CLOCK
+} BusPhase;
+typedef struct
+{
+    BusPhase phase;
+    const void *active;
+    uint64_t cycle;
+    bool fault;
+} BusContext;
 
 typedef struct
 {
-    unsigned char current[BUS_MAX_PAYLOAD], next[BUS_MAX_PAYLOAD];
-    size_t payload_size;
-    bool valid, next_valid, written, error;
-    bool wire; /* immediate combinational link; producer must run before consumer */
+    BusContext *context;
+    const void *driver;
+    const char *name;
+    void *payload;
+    size_t size;
+    uint64_t driven_cycle;
 } Bus;
 
-bool bus_init(Bus *bus, size_t payload_size);
-bool bus_init_wire(Bus *bus, size_t payload_size);
-bool bus_read(const Bus *bus, void *payload, size_t payload_size);
-bool bus_write(Bus *bus, const void *payload, size_t payload_size);
+void bus_init(Bus *, BusContext *, const char *, const void *, void *, size_t);
+bool bus_drive(Bus *, const void *, size_t);
+bool bus_read(const Bus *, void *, size_t);
 
-/* Every module registers the same callback signature. */
-typedef void (*BusCycleFunction)(void *module, uint64_t cycle);
-typedef struct
-{
-    BusCycleFunction cycle;
-    void *module;
-} BusModule;
+/* Typed signal interfaces use the same checked transport. */
+#define BUS_SIGNAL(Type)                                                      \
+    typedef struct                                                            \
+    {                                                                         \
+        Bus bus;                                                              \
+        Type payload;                                                         \
+    } Type##Bus;                                                              \
+    static inline void Type##_connect(Type##Bus *b, BusContext *ctx,          \
+                                      const char *name, const void *driver)   \
+    {                                                                         \
+        bus_init(&b->bus, ctx, name, driver, &b->payload, sizeof b->payload); \
+    }                                                                         \
+    static inline void Type##_drive(Type##Bus *b, Type value)                 \
+    {                                                                         \
+        bus_drive(&b->bus, &value, sizeof value);                             \
+    }                                                                         \
+    static inline Type Type##_read(const Type##Bus *b)                        \
+    {                                                                         \
+        Type value = {0};                                                     \
+        bus_read(&b->bus, &value, sizeof value);                              \
+        return value;                                                         \
+    }
 
-typedef struct
-{
-    Bus *links[BUS_MAX_LINKS];
-    BusModule modules[BUS_MAX_MODULES];
-    size_t link_count, module_count;
-    uint64_t cycle;
-    bool error;
-    bool logging; /* cycle headings; disabled by default */
-} BusNetwork;
-
-void bus_network_init(BusNetwork *network);
-void bus_network_set_logging(BusNetwork *network, bool enabled);
-bool bus_register_link(BusNetwork *network, Bus *link);
-bool bus_register_module(BusNetwork *network, BusCycleFunction cycle, void *module);
-/* Set execution order explicitly after initialization; must list ALL module contexts. */
-bool bus_set_module_order(BusNetwork *network, void *const *modules, size_t count);
-/* Cycle owner: clear wire strobes, traverse in dependency order, commit registers. */
-bool bus_run_cycle(BusNetwork *network);
 #endif

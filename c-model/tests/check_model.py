@@ -14,39 +14,55 @@ import shlex
 import subprocess
 import tempfile
 
+LATENCY=int(os.environ.get("POST_LATENCY", "1"))
 ROOT=Path(__file__).resolve().parents[1]
-SOURCES="logging.c bus.c controller.c sram.c demux.c reg128.c mac.c activation.c scale_clamp.c fifo.c npu.c".split()
+SOURCES="logging.c controller.c sram.c reg128.c mac.c scale_clamp.c bus.c framework.c npu_top.c".split()
 BRIDGE=r"""
 #include "npu.h"
 #include <stdlib.h>
-#include <string.h>
 void *create(unsigned batch,unsigned prefetch,unsigned fuse) {
     Npu *n=calloc(1,sizeof *n);
     if(!n || !npu_init_options(n,(NpuOptions){batch,prefetch!=0,fuse!=0})) {free(n);return NULL;}
-    bus_network_set_logging(&n->network,false);return n;
+    return n;
 }
 void destroy(void *p) {free(p);}
-void put(void *p,unsigned addr,unsigned lane,uint32_t word) {((Npu *)p)->sram.lines[addr].lane[lane]=word;}
-uint32_t get(void *p,unsigned addr,unsigned lane) {return ((Npu *)p)->sram.lines[addr].lane[lane];}
+void put(void *p,unsigned addr,unsigned lane,uint32_t word) {((Npu *)p)->data.sram.regs.lines[addr].lane[lane]=word;}
+uint32_t get(void *p,unsigned addr,unsigned lane) {return ((Npu *)p)->data.sram.regs.lines[addr].lane[lane];}
 int step(void *p) {return npu_run(p,1);}
 uint64_t metric(void *p,unsigned key) {
-    Npu *n=p;Control c={0};bus_read(&n->controller.control_bus,&c,sizeof c);
+    Npu *n=p;Control c=n->buses.control.payload;
     switch(key) {
-    case 0:return n->network.cycle-1;case 1:return n->sram.reads;case 2:return n->sram.writes;
-    case 3:return n->array.updates;case 4:return n->array.compute_cycles;case 5:return n->array.peak_active;
-    case 6:return n->controller.overlap_reads;case 7:return n->reg_i.forwards;
-    case 8:return c.kind;case 9:return c.wave;case 10:return c.bank;case 11:return c.read_enable;
-    case 12:return c.read_bank;case 13:return c.address;case 14:return c.layer;
-    case 15:return n->fifo.pushes;case 16:return n->fifo.pops;default:return 0;
+    case 0:return n->cycle-1;case 1:return n->data.sram.regs.reads;case 2:return n->data.sram.regs.writes;
+    case 3:return n->data.array.regs.updates;case 4:return n->data.array.regs.compute_cycles;case 5:return n->data.array.regs.peak_active;
+    case 6:return n->controller.regs.overlap_reads;case 7:return n->data.reg_i.regs.forwards;
+    case 8:return c.compute_en?2:0;case 9:return c.k+1;case 10:return c.bank;case 11:return c.read_enable;
+    case 12:return c.read_bank;case 13:return c.rd_addr;case 14:return c.layer;
+    default:return 0;
     }
 }
-uint32_t input_bank(void *p,unsigned bank,unsigned lane) {return ((Npu *)p)->reg_i.value.bank[bank].line.lane[lane];}
-uint32_t weight_bank(void *p,unsigned bank,unsigned lane) {return ((Npu *)p)->reg_w.value.bank[bank].line.lane[lane];}
-int32_t acc(void *p,unsigned r,unsigned v) {return ((Npu *)p)->array.cell[r][v].psum;}
+uint32_t input_bank(void *p,unsigned bank,unsigned lane) {return ((Npu *)p)->data.reg_i.regs.banks.bank[bank].line.lane[lane];}
+uint32_t weight_bank(void *p,unsigned bank,unsigned lane) {return ((Npu *)p)->data.reg_w.regs.banks.bank[bank].line.lane[lane];}
+int32_t acc(void *p,unsigned r,unsigned v) {return ((Npu *)p)->data.array.regs.sums.value[r][v];}
 int8_t requant(int32_t x,int32_t m,unsigned s) {return scale_clamp_value(x,m,s);}
-void bad_address(void *p) {((Npu *)p)->controller.layers[0].weight_base=1024;}
-void active_bank_collision(void *p) {((Npu *)p)->demux.bank_q=0;}
-void empty_fifo(void *p) {Npu *n=p;n->fifo.valid_bus.current[0]=0;}
+void bad_address(Npu *n) {n->controller.words[0].rd_addr=1024;}
+void active_bank_collision(Npu *n) {n->controller.regs.tag.bank=0;}
+int rejected_schedule(Npu *n, unsigned fault) {
+    Controller c=n->controller;
+    if(fault==0) c.words[0].store_en=true;
+    if(fault==1) c.words[0].rd_addr=1024;
+    if(fault==2) c.words[4].read_bank=0,c.words[4].rd_addr=0;
+    return !controller_validate(&c);
+}
+unsigned signature(Npu *n) {
+    Control c=n->buses.control.payload;
+    unsigned we=c.we_weight+2*c.we_input+4*c.we_bias+8*c.we_cfg;
+    return (c.compute_en?1+c.k+4*c.layer:0) |
+           (c.read_enable?(1+c.read_type+4*c.read_bank)<<4:0) |
+           (we?(we+16*c.capture_bank)<<8:0) |
+           ((unsigned)c.post_en<<13) | ((unsigned)c.forward_en<<14) |
+           ((unsigned)c.store_en<<15);
+}
+
 """
 
 def arrays():
@@ -81,7 +97,7 @@ def main():
     with tempfile.TemporaryDirectory(prefix='tiny-npu-check-') as td:
         td=Path(td);(td/'bridge.c').write_text(BRIDGE)
         cmd=shlex.split(os.environ.get('CC','cc'))+['-std=c99','-O1','-g','-Wall','-Wextra','-Werror','-fPIC','-shared',
-             '-fsanitize=undefined','-fno-sanitize-recover=all','-DNPU_LOG_FLOW=0','-DNPU_LOG_PORTS=0','-I',str(ROOT),str(td/'bridge.c')]
+             '-fsanitize=undefined','-fno-sanitize-recover=all',f'-DPOST_LATENCY={LATENCY}','-DNPU_LOG_FLOW=0','-DNPU_LOG_PORTS=0','-I',str(ROOT),str(td/'bridge.c')]
         cmd += [str(ROOT/s) for s in SOURCES]+['-o',str(td/'check.so')]
         subprocess.run(cmd,check=True)
         lib=C.CDLL(str(td/'check.so'))
@@ -94,7 +110,7 @@ def main():
         lib.metric.argtypes=[C.c_void_p,C.c_uint];lib.metric.restype=C.c_uint64
         lib.acc.argtypes=[C.c_void_p,C.c_uint,C.c_uint];lib.acc.restype=C.c_int32
         lib.requant.argtypes=[C.c_int32,C.c_int32,C.c_uint];lib.requant.restype=C.c_int8
-        for name in ['bad_address','active_bank_collision','empty_fifo']:getattr(lib,name).argtypes=[C.c_void_p]
+        for name in ['bad_address','active_bank_collision']:getattr(lib,name).argtypes=[C.c_void_p]
 
         def check(vectors,prefetch,fuse):
             nonlocal case_count,vector_count
@@ -128,13 +144,18 @@ def main():
                 assert lib.metric(n,2)==(1 if fuse else 2)
                 assert lib.metric(n,6)==(3 if prefetch else 0)
                 assert lib.metric(n,7)==(1 if fuse else 0)
-                assert lib.metric(n,15)==lib.metric(n,16)==(1 if fuse else 2)
                 for v in range(batch):assert unpack(lib.get(n,0x200,v))==refs[v][1][1]
                 for v in range(batch,4):assert lib.get(n,0x200,v)==0xA5A50000+v
                 for v in range(4):
                     expected=pack(refs[v][0][1]) if not fuse and v<batch else 0x5A5A0000+v
                     assert lib.get(n,0x201,v)==expected
-                cycles=lib.metric(n,0);times.setdefault((prefetch,fuse),cycles);assert times[prefetch,fuse]==cycles
+                # 4 initial reads, 8 MACs, 2 posts, and one drain per
+                # post register. Unfused reload costs two edges with
+                # prefetch. Otherwise it shares capture with parameter reads.
+                extra = 2*(not fuse) if prefetch else 3+(not fuse)
+                cycles=lib.metric(n,0)
+                assert cycles==4+8+2+2*LATENCY+extra
+                times.setdefault((prefetch,fuse),cycles);assert times[prefetch,fuse]==cycles
                 case_count+=1;vector_count+=batch
             finally:lib.destroy(n)
 
@@ -164,15 +185,47 @@ def main():
                 setup(n)
                 for i in range(steps):
                     if before:before(n,i+1)
-                    if lib.step(n)==0:return
+                    if lib.step(n)==0:
+                        assert i+1==steps and lib.metric(n,0)==i
+                        assert lib.step(n)==0 and lib.metric(n,0)==i
+                        return
                 raise AssertionError('fault not rejected')
             finally:lib.destroy(n)
         fault(lib.bad_address,1)
         for lane,value in [(0,0),(0,0x80000000),(1,63),(2,2),(3,1)]:
             fault(lambda n,lane=lane,value=value:lib.put(n,0x380,lane,value),5)
-        fault(lambda n:lib.put(n,0x300,0,0x7fffffff),6) # bias + positive product overflows
-        fault(lambda n:None,7,lambda n,cycle:lib.active_bank_collision(n) if cycle==7 else None)
-        fault(lambda n:None,20,lambda n,cycle:lib.empty_fifo(n) if cycle==20 else None)
+        fault(lambda n:lib.put(n,0x300,0,0x7fffffff),5)
+        fault(lambda n:None,6,lambda n,cycle:lib.active_bank_collision(n) if cycle==6 else None)
+        lib.rejected_schedule.argtypes=[C.c_void_p,C.c_uint]
+        lib.signature.argtypes=[C.c_void_p]
+        lib.signature.restype=C.c_uint
+        n=lib.create(4,1,1)
+        assert n
+        try:
+            for f in range(3):
+                assert lib.rejected_schedule(n,f)
+            # Manual default trace. The fields describe compute wave,
+            # encoded read, capture mask with bank, post, forward, store.
+            head=[
+                (0,1,0,0,0,0), (0,2,1,0,0,0), (0,3,2,0,0,0),
+                (0,4,4,0,0,0), (1,5,8,0,0,0), (2,7,17,0,0,0),
+                (3,8,20,0,0,0), (4,0,24,0,0,0),
+            ]
+            if LATENCY:
+                head += [(0,0,0,1,0,0),(0,0,0,0,1,0)]
+            else:
+                head += [(0,0,0,1,1,0)]
+            head += [(k,0,0,0,0,0) for k in range(5,9)]
+            if LATENCY:
+                head += [(0,0,0,1,0,0),(0,0,0,0,0,1)]
+            else:
+                head += [(0,0,0,1,0,1)]
+            for i,(mac,rd,we,post,fwd,wr) in enumerate(head):
+                assert lib.step(n)==(1 if i+1==len(head) else 2)
+                assert lib.signature(n)==mac+(rd<<4)+(we<<8)+(post<<13)+(fwd<<14)+(wr<<15),i+1
+        finally:
+            lib.destroy(n)
+        print(f'PASS: POST_LATENCY={LATENCY}, {len(head)} hand-checked batch-4 edges and schedule fault injection.')
         # Deliberate faults above emit expected diagnostics to stderr.
     print(f'PASS: {case_count} batch inferences / {vector_count} independent vectors; all intermediate MACs and final outputs match.')
     print('PASS: masked writes, old-value register timing, bank isolation, hidden bypass, single-port overlap and fault checks.')

@@ -1,6 +1,6 @@
 #include "logging.h"
 #include <stdio.h>
-#include <string.h>
+
 #include <inttypes.h>
 #include <stdarg.h>
 
@@ -27,86 +27,19 @@ void log_cycle_begin(uint64_t cycle)
 }
 void log_block_begin(const char *name) { if(logging_ports_enabled()) printf("\n[BLOCK] %s\n",name); }
 
-/* Inspect bytes without consuming events or changing any simulation state.
- * Current data is printed even if valid=0: retained bits are not a new event.
- */
-static void format_value(char text[256],const unsigned char *data,size_t size,LogType type)
+
+void log_line(const char *name, Line128 line)
 {
-    if(type==LOG_I32X16 && size==64) {
-        int32_t v[16];memcpy(v,data,sizeof v);size_t used=0;
-        used+=(size_t)snprintf(text+used,256-used,"[");
-        for(unsigned i=0;i<16 && used+16<256;i++)
-            used+=(size_t)snprintf(text+used,256-used,"%s%" PRId32,i?",":"",v[i]);
-        snprintf(text+used,256-used,"]");return;
-    }
-    if(type==LOG_U128 && size==16) {
-        uint32_t v[4];memcpy(v,data,sizeof v);
-        snprintf(text,256,"0x%08" PRIX32 "%08" PRIX32 "%08" PRIX32 "%08" PRIX32,v[3],v[2],v[1],v[0]);return;
-    }
-    if(type==LOG_REG128 && size==20) { /* Line128 followed by the model's 'loaded' flag */
-        uint32_t v[4];memcpy(v,data,sizeof v);
-        snprintf(text,256,"0x%08" PRIX32 "%08" PRIX32 "%08" PRIX32 "%08" PRIX32 " loaded=%u",v[3],v[2],v[1],v[0],(unsigned)data[16]);return;
-    }
-    if(type==LOG_I32X4 && size==16) {
-        int32_t v[4];memcpy(v,data,sizeof v);
-        snprintf(text,256,"[%" PRId32 ",%" PRId32 ",%" PRId32 ",%" PRId32 "]",v[0],v[1],v[2],v[3]);return;
-    }
-    if(type==LOG_I8X4 && size==4) {
-        int8_t v[4];memcpy(v,data,sizeof v);
-        snprintf(text,256,"[%d,%d,%d,%d]",v[0],v[1],v[2],v[3]);return;
-    }
-    if(type==LOG_BYTES) {
-        size_t used=0;
-        for(size_t i=0;i<size && used+3<256;i++)
-            used+=(size_t)snprintf(text+used,256-used,"%02X",(unsigned)data[i]);
-        return;
-    }
-    size_t expected=(type==LOG_U8 || type==LOG_I8)?1:
-                    (type==LOG_U16 || type==LOG_OPERANDS)?2:4;
-    if(size!=expected) { snprintf(text,256,"<payload size mismatch>"); return; }
-    switch(type) {
-    case LOG_I32X16: case LOG_U128: case LOG_REG128: case LOG_BYTES: case LOG_I32X4: case LOG_I8X4: snprintf(text,256,"<payload size mismatch>");break;
-    case LOG_U8: {
-        uint8_t value;memcpy(&value,data,sizeof(value));
-        snprintf(text,256,"0x%02" PRIX8 " (%u)",value,(unsigned)value);break;
-    }
-    case LOG_I8: {
-        int8_t value;uint8_t bits;memcpy(&value,data,1);memcpy(&bits,data,1);
-        snprintf(text,256,"0x%02" PRIX8 " (%d)",bits,(int)value);break;
-    }
-    case LOG_U16: {
-        uint16_t value;memcpy(&value,data,sizeof(value));
-        snprintf(text,256,"0x%04" PRIX16 " (%u)",value,(unsigned)value);break;
-    }
-    case LOG_U32: {
-        uint32_t value;memcpy(&value,data,sizeof(value));
-        snprintf(text,256,"0x%08" PRIX32 " (%" PRIu32 ")",value,value);break;
-    }
-    case LOG_I32: {
-        uint32_t bits;int32_t value;memcpy(&bits,data,4);memcpy(&value,data,4);
-        snprintf(text,256,"0x%08" PRIX32 " (%" PRId32 ")",bits,value);break;
-    }
-    case LOG_OPERANDS: {
-        uint16_t value;memcpy(&value,data,2);
-        int x=value & 255u,w=(value>>8) & 255u;
-        if(x>=128) x-=256;
-        if(w>=128) w-=256;
-        snprintf(text,256,"0x%04" PRIX16 " (x=%d,w=%d)",value,x,w);break;
-    }
-    }
+    printf("  %s=%08" PRIX32 "_%08" PRIX32 "_%08" PRIX32 "_%08" PRIX32 "\n",
+           name, line.lane[3], line.lane[2], line.lane[1], line.lane[0]);
 }
-void log_port(const char *name,const Bus *b,LogDirection direction,LogType type)
+
+void log_tile(const char *name, TileSums tile)
 {
-    if(!logging_ports_enabled()) return;
-    printf("  %-3s %-27s ",direction==LOG_INPUT?"IN":"OUT",name);
-    if(!b) { puts("<not connected>"); return; }
-    char current[256],next[256];
-    format_value(current,b->current,b->payload_size,type);
-    printf("%s=%s valid=%u",b->wire?"WIRE":"CURRENT",current,(unsigned)b->valid);
-    if(direction==LOG_OUTPUT && !b->wire) {
-        format_value(next,b->next,b->payload_size,type);
-        printf(" | NEXT=%-31s valid=%u written=%u",next,(unsigned)b->next_valid,(unsigned)b->written);
+    printf("  %s=", name);
+    for (unsigned r = 0; r < ARRAY_SIZE; r++) {
+        printf(" [%" PRId32 ",%" PRId32 ",%" PRId32 ",%" PRId32 "]",
+               tile.value[r][0], tile.value[r][1], tile.value[r][2], tile.value[r][3]);
     }
-    if(b->error) printf(" BUS_ERROR");
-    puts("");
+    putchar('\n');
 }

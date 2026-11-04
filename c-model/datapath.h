@@ -1,11 +1,13 @@
 #ifndef DATAPATH_H
 #define DATAPATH_H
-#include "bus.h"
+#include <stdint.h>
+#include <stdbool.h>
+#include <stddef.h>
 #define ARRAY_SIZE 4u
 #define NETWORK_LAYERS 2u
 #define PARAM_BANKS 2u
 #define COMPUTE_WAVES 4u
-/* Safety bound, not a timing claim. Completion comes from the controller FSM. */
+/* Safety bound, not a timing claim. Completion comes from the controller schedule. */
 #define NPU_INFERENCE_CYCLES 128u
 #ifndef NPU_BATCH
 #define NPU_BATCH 1u
@@ -23,21 +25,25 @@ typedef enum { TYPE_WEIGHT, TYPE_INPUT, TYPE_BIAS, TYPE_CONFIG } TypeSel;
 typedef struct {
     uint32_t weight_base, bias_base, input_base, output_base, config_base;
 } LayerConfig;
-typedef enum {
-    EDGE_WAIT, EDGE_LOAD, EDGE_COMPUTE, EDGE_ACTIVATE,
-    EDGE_SCALE, EDGE_HANDOFF, EDGE_STORE
-} EdgeKind;
+#ifndef POST_LATENCY
+#define POST_LATENCY 1
+#endif
+#if POST_LATENCY != 0 && POST_LATENCY != 1
+#error POST_LATENCY must be 0 or 1
+#endif
+
+/* Schedule words contain controls and addresses only. Capture enables are
+ * decoded from the previous request by the Control Path at playback time. */
 typedef struct {
-    EdgeKind kind;
-    bool read_enable, fuse;
+    bool read_enable, store_en, compute_en, post_en, forward_en;
+    bool we_weight, we_input, we_bias, we_cfg;
     TypeSel read_type;
-    unsigned read_bank;
-    uint32_t address;
+    unsigned read_bank, capture_bank, forward_bank;
+    uint32_t rd_addr, store_addr;
     uint16_t byte_enable;
-    unsigned layer, bank, wave, batch;
+    unsigned layer, bank, k, batch;
 } Control;
-/* Delay the destination BANK along with the TYPE. */
-typedef struct { Line128 line; unsigned bank; } TaggedLine;
+
 typedef struct { Line128 line; uint8_t loaded; } RegValue;
 typedef struct { RegValue bank[PARAM_BANKS]; } RegBanks;
 /* PE coordinates = OUTPUT NEURON r, INDEPENDENT VECTOR v.
