@@ -5,11 +5,16 @@
 
 static uint32_t read_address(const LayerConfig *cfg, TypeSel type)
 {
-    switch (type) {
-    case TYPE_WEIGHT: return cfg->weight_base;
-    case TYPE_INPUT: return cfg->input_base;
-    case TYPE_BIAS: return cfg->bias_base;
-    case TYPE_CONFIG: return cfg->config_base;
+    switch (type)
+    {
+    case TYPE_WEIGHT:
+        return cfg->weight_base;
+    case TYPE_INPUT:
+        return cfg->input_base;
+    case TYPE_BIAS:
+        return cfg->bias_base;
+    case TYPE_CONFIG:
+        return cfg->config_base;
     }
     return SRAM_LINES;
 }
@@ -28,7 +33,8 @@ static bool read_word(Controller *c, unsigned edge, unsigned layer, TypeSel type
 
 static unsigned compute_layer(Controller *c, unsigned start, unsigned layer)
 {
-    for (unsigned k = 0; k < ARRAY_SIZE; k++) {
+    for (unsigned k = 0; k < ARRAY_SIZE; k++)
+    {
         Control *word = &c->words[start + k];
         word->compute_en = true;
         word->layer = word->bank = layer;
@@ -40,10 +46,13 @@ static unsigned compute_layer(Controller *c, unsigned start, unsigned layer)
     unsigned drain = post + POST_LATENCY;
     Control *word = &c->words[drain];
     word->layer = word->bank = layer;
-    if (!layer && c->options.fuse) {
+    if (!layer && c->options.fuse)
+    {
         word->forward_en = true;
         word->forward_bank = 1;
-    } else {
+    }
+    else
+    {
         word->store_en = true;
         word->store_addr = c->layers[layer].output_base;
         word->byte_enable = batch_byte_enable(c->options.batch);
@@ -87,7 +96,8 @@ bool controller_validate(const Controller *c)
     bool hidden_stored = false;
     unsigned wave[2] = {0};
     const Control *previous = NULL;
-    for (unsigned i = 0; i < c->length; i++) {
+    for (unsigned i = 0; i < c->length; i++)
+    {
         const Control *w = &c->words[i];
         if ((w->read_enable && w->store_en) || (w->forward_en && w->store_en) ||
             w->bank >= PARAM_BANKS || w->layer >= NETWORK_LAYERS ||
@@ -98,7 +108,8 @@ bool controller_validate(const Controller *c)
              w->rd_addr != read_address(&c->layers[w->read_bank], w->read_type) ||
              (w->read_type == TYPE_INPUT && w->read_bank == 1 && !hidden_stored)))
             return false;
-        if (w->compute_en) {
+        if (w->compute_en)
+        {
             if (w->bank != w->layer || w->k >= ARRAY_SIZE || w->k != wave[w->layer]++ ||
                 !loaded[TYPE_WEIGHT][w->bank] || !loaded[TYPE_INPUT][w->bank] ||
                 !loaded[TYPE_BIAS][w->bank])
@@ -108,12 +119,14 @@ bool controller_validate(const Controller *c)
                            !previous->compute_en || previous->k != ARRAY_SIZE - 1 ||
                            previous->layer != w->layer || previous->bank != w->bank))
             return false;
-        if (w->store_en || w->forward_en) {
+        if (w->store_en || w->forward_en)
+        {
             const Control *post = POST_LATENCY ? previous : w;
             if (!post || !post->post_en || post->layer != w->layer)
                 return false;
         }
-        if (w->store_en) {
+        if (w->store_en)
+        {
             if (!sram_address_matches_type(w->store_addr, TYPE_INPUT) ||
                 w->store_addr != c->layers[w->layer].output_base ||
                 w->byte_enable != batch_byte_enable(w->batch))
@@ -123,7 +136,8 @@ bool controller_validate(const Controller *c)
 
         /* All captures become visible on the following edge. Each file/bank
          * has a single load lifetime in this two-layer schedule. */
-        if (previous && previous->read_enable) {
+        if (previous && previous->read_enable)
+        {
             TypeSel type = previous->read_type;
             unsigned bank = previous->read_bank;
             if (loaded[type][bank] ||
@@ -132,7 +146,8 @@ bool controller_validate(const Controller *c)
                 return false;
             loaded[type][bank] = true;
         }
-        if (w->forward_en) {
+        if (w->forward_en)
+        {
             if (w->layer != 0 || w->forward_bank != 1 || loaded[TYPE_INPUT][1])
                 return false;
             loaded[TYPE_INPUT][1] = true;
@@ -155,13 +170,13 @@ static void controller_publish(void *instance, uint64_t cycle)
     w->we_bias = tag.valid && tag.type == TYPE_BIAS;
     w->we_cfg = tag.valid && tag.type == TYPE_CONFIG;
     Control_drive(c->ports.out.control, word);
-    log_flow(cycle,"AGU","EDGE",
+    log_flow(cycle, "AGU", "EDGE",
              "L%u bank=%u compute=%u k=%u read=%u type=%u dest=%u addr=0x%03X capture=%u:%u%u%u%u post=%u forward=%u store=%u",
-             w->layer+1,w->bank,w->compute_en,w->k,w->read_enable,w->read_type,w->read_bank,
-             w->rd_addr,w->capture_bank,w->we_weight,w->we_input,w->we_bias,w->we_cfg,
-             w->post_en,w->forward_en,w->store_en);
+             w->layer + 1, w->bank, w->compute_en, w->k, w->read_enable, w->read_type, w->read_bank,
+             w->rd_addr, w->capture_bank, w->we_weight, w->we_input, w->we_bias, w->we_cfg,
+             w->post_en, w->forward_en, w->store_en);
     if (w->compute_en && w->read_enable)
-        log_flow(cycle,"AGU","PREFETCH","bank=%u type=%u addr=0x%03X",w->read_bank,w->read_type,w->rd_addr);
+        log_flow(cycle, "AGU", "PREFETCH", "bank=%u type=%u addr=0x%03X", w->read_bank, w->read_type, w->rd_addr);
 }
 
 static void controller_clock(void *instance, uint64_t cycle)
@@ -172,7 +187,8 @@ static void controller_clock(void *instance, uint64_t cycle)
     c->regs.tag = (ReadTag){w->read_enable, w->read_type, w->read_bank};
     c->regs.done = ++c->regs.pc == c->length;
     c->regs.overlap_reads += w->compute_en && w->read_enable;
-    if (logging_ports_enabled()) {
+    if (logging_ports_enabled())
+    {
         Control out = Control_read(c->ports.out.control);
         log_block_begin("Controller");
         printf("  out layer=%u k=%u bank=%u batch=%u compute=%u post=%u forward=%u store=%u\n",

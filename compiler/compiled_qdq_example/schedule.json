@@ -1,0 +1,87 @@
+[
+  {
+    "pc": 14592,
+    "instruction": "OP_STREAM_LOAD   src=0x00000000 dest=0x00002000 dims=16 flags=0x00000000",
+    "note": "One padded input beat"
+  },
+  {
+    "pc": 14608,
+    "instruction": "OP_LOAD_OPERAND  [0x3000] -> slot0.B",
+    "note": "Bias in accumulator units"
+  },
+  {
+    "pc": 14624,
+    "instruction": "OP_LOAD_OPERAND  [0x3800] -> slot0.CFG",
+    "note": "Activation and scale configuration"
+  },
+  {
+    "pc": 14640,
+    "instruction": "OP_LOAD_OPERAND  [0x0000] -> slot0.W",
+    "note": "Layer 0, neuron tile 0, reduction tile 0"
+  },
+  {
+    "pc": 14656,
+    "instruction": "OP_LOAD_OPERAND  [0x2000] -> slot0.X",
+    "note": "X[vector,k]"
+  },
+  {
+    "pc": 14672,
+    "instruction": "OP_EXEC_MAC      slot=0 N=4 BATCH=4 K=4 accumulate=False",
+    "note": "Seed each vector accumulator with bias",
+    "layer": 0,
+    "neuron_offset": 0,
+    "k_offset": 0
+  },
+  {
+    "pc": 14688,
+    "instruction": "OP_POST_PROC     slot=0 N=4 BATCH=4 store=False dest=0x0000",
+    "note": "Layer 0: activation -> scale -> clamp",
+    "layer": 0,
+    "neuron_offset": 0
+  },
+  {
+    "pc": 14704,
+    "instruction": "OP_FORWARD       result -> slot1.X N=4 BATCH=4",
+    "note": "Hidden result -> next layer slot.X"
+  },
+  {
+    "pc": 14720,
+    "instruction": "OP_LOAD_OPERAND  [0x3010] -> slot1.B",
+    "note": "Bias in accumulator units"
+  },
+  {
+    "pc": 14736,
+    "instruction": "OP_LOAD_OPERAND  [0x3810] -> slot1.CFG",
+    "note": "Activation and scale configuration"
+  },
+  {
+    "pc": 14752,
+    "instruction": "OP_LOAD_OPERAND  [0x0010] -> slot1.W",
+    "note": "Layer 1, neuron tile 0, reduction tile 0"
+  },
+  {
+    "pc": 14768,
+    "instruction": "OP_EXEC_MAC      slot=1 N=4 BATCH=4 K=4 accumulate=False",
+    "note": "Seed each vector accumulator with bias",
+    "layer": 1,
+    "neuron_offset": 0,
+    "k_offset": 0
+  },
+  {
+    "pc": 14784,
+    "instruction": "OP_POST_PROC     slot=1 N=4 BATCH=4 store=True dest=0x2020",
+    "note": "Layer 1: activation -> scale -> clamp",
+    "layer": 1,
+    "neuron_offset": 0
+  },
+  {
+    "pc": 14800,
+    "instruction": "OP_STREAM_STORE  src=0x00002020 dest=0x00000000 dims=16 flags=0x00000000",
+    "note": "One padded result beat"
+  },
+  {
+    "pc": 14816,
+    "instruction": "OP_HALT          src=0x00000000 dest=0x00000000 dims=0 flags=0x00000000",
+    "note": "Finish after pending work and stream handshakes"
+  }
+]

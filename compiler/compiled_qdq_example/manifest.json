@@ -1,0 +1,154 @@
+{
+  "isa": "tiny-npu-isa-v1",
+  "entry_pc": 14592,
+  "batch": 4,
+  "widths": [
+    4,
+    4,
+    4
+  ],
+  "input_scale": 0.125,
+  "output_scale": 0.5,
+  "buffers": [
+    8192,
+    8208,
+    8224
+  ],
+  "layers": [
+    {
+      "weights": [
+        [
+          0
+        ]
+      ],
+      "bias": [
+        12288
+      ],
+      "config": 14336
+    },
+    {
+      "weights": [
+        [
+          16
+        ]
+      ],
+      "bias": [
+        12304
+      ],
+      "config": 14352
+    }
+  ],
+  "forwarding": true,
+  "instruction_count": 15,
+  "program_bytes": 240,
+  "useful_macs_per_inference": 128,
+  "schedule_policy": "conservative, dependency-ordered; no timing claim",
+  "byte_order": "little",
+  "beat_bytes": 16,
+  "sram_bytes": 16384,
+  "regions": {
+    "weights": {
+      "start": 0,
+      "end_exclusive": 8192
+    },
+    "activations": {
+      "start": 8192,
+      "end_exclusive": 12288
+    },
+    "bias": {
+      "start": 12288,
+      "end_exclusive": 14336
+    },
+    "config": {
+      "start": 14336,
+      "end_exclusive": 14592
+    },
+    "program": {
+      "start": 14592,
+      "end_exclusive": 16384
+    }
+  },
+  "allocations": [
+    {
+      "name": "tensor0",
+      "region": "activations",
+      "address": 8192,
+      "address_hex": "0x2000",
+      "size": 16
+    },
+    {
+      "name": "tensor1",
+      "region": "activations",
+      "address": 8208,
+      "address_hex": "0x2010",
+      "size": 16
+    },
+    {
+      "name": "tensor2",
+      "region": "activations",
+      "address": 8224,
+      "address_hex": "0x2020",
+      "size": 16
+    },
+    {
+      "name": "L0.W[0,0]",
+      "region": "weights",
+      "address": 0,
+      "address_hex": "0x0000",
+      "size": 16
+    },
+    {
+      "name": "L0.B[0]",
+      "region": "bias",
+      "address": 12288,
+      "address_hex": "0x3000",
+      "size": 16
+    },
+    {
+      "name": "L0.CFG",
+      "region": "config",
+      "address": 14336,
+      "address_hex": "0x3800",
+      "size": 16
+    },
+    {
+      "name": "L1.W[0,0]",
+      "region": "weights",
+      "address": 16,
+      "address_hex": "0x0010",
+      "size": 16
+    },
+    {
+      "name": "L1.B[0]",
+      "region": "bias",
+      "address": 12304,
+      "address_hex": "0x3010",
+      "size": 16
+    },
+    {
+      "name": "L1.CFG",
+      "region": "config",
+      "address": 14352,
+      "address_hex": "0x3810",
+      "size": 16
+    },
+    {
+      "name": "instructions",
+      "region": "program",
+      "address": 14592,
+      "address_hex": "0x3900",
+      "size": 240
+    }
+  ],
+  "input_format": "channel-tile-major beats, byte 4*v+k; inactive lanes zero",
+  "output_format": "channel-tile-major beats, byte 4*v+r; inactive lanes zero",
+  "quantization_mode": "imported-qdq",
+  "source_input_dtype": "float32",
+  "source_output_dtype": "float32",
+  "calibration": null,
+  "sha256": {
+    "program.bin": "e9f7dcb1de4244089919fdced460eee306d604ea2fa047e388bdf3d7726782cd",
+    "sram.bin": "12ed0b0af98aa003bc74884f8b541facd8e8aa0ed44228c017a5091cf31f744b"
+  },
+  "source": "qat_qdq.onnx"
+}

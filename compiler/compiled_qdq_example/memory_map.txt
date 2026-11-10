@@ -1,0 +1,11 @@
+BYTE ADDR   SIZE  REGION       ALLOCATION
+0x2000       16  activations  tensor0
+0x2010       16  activations  tensor1
+0x2020       16  activations  tensor2
+0x0000       16  weights      L0.W[0,0]
+0x3000       16  bias         L0.B[0]
+0x3800       16  config       L0.CFG
+0x0010       16  weights      L1.W[0,0]
+0x3010       16  bias         L1.B[0]
+0x3810       16  config       L1.CFG
+0x3900      240  program      instructions

@@ -4,20 +4,27 @@
 #include "framework.h"
 
 #define SCHEDULE_CAPACITY 32u
-typedef struct {
+typedef struct
+{
     bool valid;
     TypeSel type;
     unsigned bank;
 } ReadTag;
-typedef struct {
+typedef struct
+{
     unsigned pc, overlap_reads;
     ReadTag tag;
     bool done;
 } ControllerRegs;
-typedef struct {
-    struct { ControlBus *control; } out;
+typedef struct
+{
+    struct
+    {
+        ControlBus *control;
+    } out;
 } ControllerPorts;
-typedef struct {
+typedef struct
+{
     LayerConfig layers[NETWORK_LAYERS];
     NpuOptions options;
     Control words[SCHEDULE_CAPACITY];

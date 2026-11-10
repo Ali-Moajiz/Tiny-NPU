@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tiny-npu-compiler"
+version = "0.3.0"
+description = "Inspect-first compiler for the Tiny NPU 128-bit ISA"
+requires-python = ">=3.10"
+dependencies = ["numpy>=1.26,<3", "onnx>=1.16,<2"]
+
+[project.scripts]
+tiny-npu = "tiny_npu.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["tiny_npu*"]

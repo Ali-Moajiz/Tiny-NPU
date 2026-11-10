@@ -1,0 +1,179 @@
+{
+  "environment": "isolated cwd; PATH=/no-python-or-source; no compiler source copied",
+  "checks": [
+    {
+      "command": [
+        "compiler-binary",
+        "--version"
+      ],
+      "status": 0,
+      "stdout": "Tiny NPU compiler 0.3.0\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "compiler-binary",
+        "model.onnx"
+      ],
+      "status": 2,
+      "stdout": "Model: model.onnx\n",
+      "stderr": "error: Float-model INT8 compilation requires representative calibration inputs. Place model.calibration.npy or calibration.npy beside the model, or pass --calibration PATH.npy.\n"
+    },
+    {
+      "command": [
+        "compiler-binary",
+        "ptq_qdq.onnx"
+      ],
+      "status": 0,
+      "stdout": "Model: ptq_qdq.onnx\nQuantization: imported-qdq\nCalibration: not needed; using embedded scales\nCompiled 15 instructions (240 bytes)\nENTRY_PC=0x3900; useful MACs/inference=128\nOutput: /tmp/npu-frozen-6cxv8kz5/ptq_qdq_compiled\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "compiler-binary",
+        "run",
+        "--image",
+        "ptq_qdq_compiled",
+        "--inputs",
+        "raw_inputs.npy",
+        "--quantized",
+        "--out",
+        "ptq_qdq_compiled/run.json"
+      ],
+      "status": 0,
+      "stdout": "PASS: binary execution matches the independent integer reference\nINT8 output: [[0, 1, -1, 0], [25, 10, 4, -20], [0, 0, -1, -1], [0, 0, -1, -1], [0, 0, -1, -1]]\nTrace: /tmp/npu-frozen-6cxv8kz5/ptq_qdq_compiled/run.json\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "compiler-binary",
+        "qat_qdq.onnx"
+      ],
+      "status": 0,
+      "stdout": "Model: qat_qdq.onnx\nQuantization: imported-qdq\nCalibration: not needed; using embedded scales\nCompiled 15 instructions (240 bytes)\nENTRY_PC=0x3900; useful MACs/inference=128\nOutput: /tmp/npu-frozen-6cxv8kz5/qat_qdq_compiled\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "compiler-binary",
+        "run",
+        "--image",
+        "qat_qdq_compiled",
+        "--inputs",
+        "raw_inputs.npy",
+        "--quantized",
+        "--out",
+        "qat_qdq_compiled/run.json"
+      ],
+      "status": 0,
+      "stdout": "PASS: binary execution matches the independent integer reference\nINT8 output: [[0, 1, -1, 0], [25, 10, 4, -20], [0, 0, -1, -1], [0, 0, -1, -1], [0, 0, -1, -1]]\nTrace: /tmp/npu-frozen-6cxv8kz5/qat_qdq_compiled/run.json\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "compiler-binary",
+        "ptq_qdq_int8_io.onnx"
+      ],
+      "status": 0,
+      "stdout": "Model: ptq_qdq_int8_io.onnx\nQuantization: imported-qdq\nCalibration: not needed; using embedded scales\nCompiled 15 instructions (240 bytes)\nENTRY_PC=0x3900; useful MACs/inference=128\nOutput: /tmp/npu-frozen-6cxv8kz5/ptq_qdq_int8_io_compiled\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "compiler-binary",
+        "run",
+        "--image",
+        "ptq_qdq_int8_io_compiled",
+        "--inputs",
+        "raw_inputs.npy",
+        "--quantized",
+        "--out",
+        "ptq_qdq_int8_io_compiled/run.json"
+      ],
+      "status": 0,
+      "stdout": "PASS: binary execution matches the independent integer reference\nINT8 output: [[0, 1, -1, 0], [25, 10, 4, -20], [0, 0, -1, -1], [0, 0, -1, -1], [0, 0, -1, -1]]\nTrace: /tmp/npu-frozen-6cxv8kz5/ptq_qdq_int8_io_compiled/run.json\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "compiler-binary",
+        "disasm",
+        "qat_qdq_compiled/program.bin"
+      ],
+      "status": 0,
+      "stdout": "3900  10000000000002000000001000000000  OP_STREAM_LOAD   src=0x00000000 dest=0x00002000 dims=16 flags=0x00000000\n3910  80000300000000002000001000000000  OP_LOAD_OPERAND  [0x3000] -> slot0.B\n3920  80000380000000003000001000000000  OP_LOAD_OPERAND  [0x3800] -> slot0.CFG\n3930  80000000000000001000001000000000  OP_LOAD_OPERAND  [0x0000] -> slot0.W\n3940  80000200000000000000001000000000  OP_LOAD_OPERAND  [0x2000] -> slot0.X\n3950  20000000000000000000044400000000  OP_EXEC_MAC      slot=0 N=4 BATCH=4 K=4 accumulate=False\n3960  30000000000000000000004400000000  OP_POST_PROC     slot=0 N=4 BATCH=4 store=False dest=0x0000\n3970  40000000000000001000004400000000  OP_FORWARD       result -> slot1.X N=4 BATCH=4\n3980  80000301000000006000001000000000  OP_LOAD_OPERAND  [0x3010] -> slot1.B\n3990  80000381000000007000001000000000  OP_LOAD_OPERAND  [0x3810] -> slot1.CFG\n39A0  80000001000000005000001000000000  OP_LOAD_OPERAND  [0x0010] -> slot1.W\n39B0  20000000000000000000044400000001  OP_EXEC_MAC      slot=1 N=4 BATCH=4 K=4 accumulate=False\n39C0  30000000000002020000004400000005  OP_POST_PROC     slot=1 N=4 BATCH=4 store=True dest=0x2020\n39D0  50000202000000000000001000000000  OP_STREAM_STORE  src=0x00002020 dest=0x00000000 dims=16 flags=0x00000000\n39E0  F0000000000000000000000000000000  OP_HALT          src=0x00000000 dest=0x00000000 dims=0 flags=0x00000000\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "compiler-binary",
+        "qat_qdq.onnx",
+        "--calibration",
+        "missing.npy"
+      ],
+      "status": 2,
+      "stdout": "Model: qat_qdq.onnx\n",
+      "stderr": "error: Q/DQ model already contains quantization parameters: omit --calibration; embedded scales will not be recalibrated\n"
+    },
+    {
+      "command": [
+        "compiler-binary",
+        "model.onnx"
+      ],
+      "status": 0,
+      "stdout": "Model: model.onnx\nQuantization: float-ptq\nCalibration: model.calibration.npy\nCompiled 15 instructions (240 bytes)\nENTRY_PC=0x3900; useful MACs/inference=128\nOutput: /tmp/npu-frozen-6cxv8kz5/model_compiled\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "compiler-binary",
+        "run",
+        "--image",
+        "model_compiled",
+        "--inputs",
+        "inputs.npy",
+        "--out",
+        "model_compiled/run.json"
+      ],
+      "status": 0,
+      "stdout": "PASS: binary execution matches the independent integer reference\nINT8 output: [[27, 21, 2, 57], [0, -2, -1, 0], [1, -1, -1, 3], [0, -2, -2, 1]]\nTrace: /tmp/npu-frozen-6cxv8kz5/model_compiled/run.json\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "compiler-binary",
+        "ort_qdq.onnx",
+        "--batch",
+        "1",
+        "--no-forward"
+      ],
+      "status": 0,
+      "stdout": "Model: ort_qdq.onnx\nQuantization: imported-qdq\nCalibration: not needed; using embedded scales\nCompiled 21 instructions (336 bytes)\nENTRY_PC=0x3900; useful MACs/inference=48\nOutput: /tmp/npu-frozen-6cxv8kz5/ort_qdq_compiled\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "compiler-binary",
+        "run",
+        "--image",
+        "ort_qdq_compiled",
+        "--inputs",
+        "inputs.npy",
+        "--out",
+        "ort_qdq_compiled/run.json"
+      ],
+      "status": 0,
+      "stdout": "PASS: binary execution matches the independent integer reference\nINT8 output: [[27, 21, 2, 57], [0, -2, -1, 0], [1, -1, -1, 3], [0, -2, -2, 1]]\nTrace: /tmp/npu-frozen-6cxv8kz5/ort_qdq_compiled/run.json\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "compiler-binary",
+        "unsupported.onnx"
+      ],
+      "status": 2,
+      "stdout": "Model: unsupported.onnx\n",
+      "stderr": "error: Expected scalar int8 zero point 0; unsigned/asymmetric/per-channel quantization is unsupported\n"
+    }
+  ]
+}
