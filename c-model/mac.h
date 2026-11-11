@@ -1,32 +1,34 @@
 #ifndef MAC_H
 #define MAC_H
-#include "signals.h"
 #include "framework.h"
+#include "signals.h"
 
-typedef struct
-{
-    struct
-    {
+typedef struct {
+    Line128 operand[4];
+    bool loaded[4];
+} OperandSlot;
+
+typedef struct {
+    OperandSlot slot[OPERAND_SLOTS];
+    TileSums accumulators;
+    bool valid, complete;
+    unsigned neurons, batch, next_k;
+    uint64_t useful_macs, compute_cycles;
+} MacRegisters;
+
+typedef struct {
+    struct {
         const ControlBus *control;
-        const TileSignalBus *weights, *inputs, *biases;
+        const TileSignalBus *response;
+        const ResultSignalBus *forward;
     } in;
-    struct
-    {
-        AccSignalBus *sums;
-    } out;
+    struct { AccSignalBus *sums; } out;
 } MacPorts;
 
-typedef struct
-{
-    TileSums sums;
-    bool final_valid;
-    unsigned updates, compute_cycles, peak_active, next_wave;
-} MacRegs;
-typedef struct
-{
+typedef struct {
+    MacRegisters regs;
     MacPorts ports;
-    MacRegs regs;
-} MacArray;
-
+    TileSums products_added; /* Combinational adder results, not a q/d bank. */
+} Mac;
 extern const BlockOps mac_ops;
 #endif

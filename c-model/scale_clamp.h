@@ -1,20 +1,22 @@
 #ifndef SCALE_CLAMP_H
 #define SCALE_CLAMP_H
-#include "signals.h"
 #include "framework.h"
+#include "signals.h"
+
+typedef struct { ResultSignal result; } ScaleClampRegisters;
+typedef struct {
+    struct {
+        const ControlBus *control;
+        const AccSignalBus *activated;
+    } in;
+    struct { ResultSignalBus *result; } out;
+} ScaleClampPorts;
 
 typedef struct {
-    struct { const ControlBus *control; const AccSignalBus *sums; const TileSignalBus *config; } in;
-    struct { TileSignalBus *result; } out;
-} PostPorts;
-typedef struct { Line128 tile; bool valid; } PostRegs;
-typedef struct {
-    PostPorts ports;
-#if POST_LATENCY == 1
-    PostRegs regs;
-#endif
-} PostProcess;
-
-int8_t scale_clamp_value(int32_t, int32_t, unsigned);
-extern const BlockOps post_ops;
+    ScaleClampRegisters regs;
+    ScaleClampPorts ports;
+    ResultSignal evaluated; /* Combinational result before capture. */
+} ScaleClamp;
+int8_t scale_clamp_value(int32_t value, int32_t multiplier, unsigned shift);
+extern const BlockOps scale_clamp_ops;
 #endif

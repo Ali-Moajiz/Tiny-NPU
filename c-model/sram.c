@@ -1,101 +1,83 @@
 #include "sram.h"
+#include "isa.h"
 #include "logging.h"
-#include "trained_npu_params.h"
+#include <ctype.h>
 #include <stdio.h>
-
-static Line128 mask_write(Line128 line, Line128 data, uint16_t byte_enable)
+#include <string.h>
+bool sram_load_hex(Sram *s,const char *path,char *error,size_t error_size)
 {
-    for (unsigned byte = 0; byte < 16; byte++) {
-        if (byte_enable & (1u << byte)) {
-            unsigned word = byte / 4, shift = 8 * (byte % 4);
-            uint32_t mask = UINT32_C(255) << shift;
-            line.lane[word] = (line.lane[word] & ~mask) | (data.lane[word] & mask);
+    FILE *file=fopen(path,"r");
+    if(!file) {snprintf(error,error_size,"cannot open SRAM image: %s",path);return false;}
+    Line128 memory[SRAM_LINES];unsigned count=0,line_no=0;char text[256];bool ok=true;
+    while(fgets(text,sizeof text,file)) {
+        line_no++;
+        if(!strchr(text,'\n')&&!feof(file)) {ok=false;break;}
+        char *p=text;while(isspace((unsigned char)*p)) p++;
+        if(!*p||*p=='#'||(p[0]=='/'&&p[1]=='/')) continue;
+        if(count>=SRAM_LINES) {ok=false;break;}
+        Line128 word={{0}};
+        for(unsigned i=0;i<32;i++) {
+            unsigned char ch=(unsigned char)p[i];unsigned v;
+            if(ch>='0'&&ch<='9') v=ch-'0';
+            else if(ch>='a'&&ch<='f') v=ch-'a'+10;
+            else if(ch>='A'&&ch<='F') v=ch-'A'+10;
+            else {ok=false;break;}
+            word.lane[3-i/8]=(word.lane[3-i/8]<<4)|v;
         }
+        if(!ok) break;
+        p+=32;while(isspace((unsigned char)*p)) p++;
+        if(*p&&*p!='#'&&!(p[0]=='/'&&p[1]=='/')) {ok=false;break;}
+        memory[count++]=word;
     }
-    return line;
-}
-
-static void sram_publish(void *instance, uint64_t cycle)
-{
-    (void)cycle;
-    Sram *s = instance;
-    TileSignal_drive(s->ports.out.response,
-                     (TileSignal){s->regs.response, s->regs.response_valid});
-}
-
-static bool sram_check(void *instance, uint64_t cycle)
-{
-    const Sram *s = instance;
-    Control c = Control_read(s->ports.in.control);
-    uint32_t address = c.store_en ? c.store_addr : c.rd_addr;
-    if ((c.read_enable || c.store_en) &&
-        (!sram_address_matches_type(address, c.store_en ? TYPE_INPUT : c.read_type) ||
-         (c.read_enable && c.store_en))) {
-        log_error(cycle, "SRAM", "out-of-range line address or simultaneous read/write");
+    if(ferror(file)) ok=false;
+    fclose(file);
+    if(!ok||count!=SRAM_LINES) {
+        snprintf(error,error_size,"invalid SRAM hex at line %u: expected exactly 1024 words of 32 hex digits (got %u)",line_no,count);
         return false;
     }
-    if (c.store_en && !TileSignal_read(s->ports.in.result).valid) {
-        log_error(cycle, "SRAM", "store without a valid result");
-        return false;
-    }
-    unsigned enables = c.we_weight + c.we_input + c.we_bias + c.we_cfg;
-    if (enables != (unsigned)s->regs.response_valid) {
-        log_error(cycle, "SRAM", "response validity and capture enables disagree");
-        return false;
-    }
+    memcpy(s->regs.memory,memory,sizeof memory);
+    s->regs.response=(TileSignal){0};s->regs.reads=0;s->regs.writes=0;
     return true;
 }
-
-static void sram_clock(void *instance, uint64_t cycle)
+static void publish(void *instance,uint64_t cycle)
+{ (void)cycle;Sram *s=instance;TileSignal_drive(s->ports.out.response,s->regs.response); }
+static bool check(void *instance,uint64_t cycle)
 {
-    Sram *s = instance;
-    Control c = Control_read(s->ports.in.control);
-    bool old_valid = s->regs.response_valid;
-    s->regs.response_valid = c.read_enable;
-    if (c.read_enable) {
-        Line128 line = s->regs.lines[c.rd_addr];
-        s->regs.response = line;
-        s->regs.reads++;
-        log_flow(cycle, "SRAM", "READ_128",
-                 "line_addr=0x%03X type=%u Q=%08X_%08X_%08X_%08X valid_cycle=%llu",
-                 c.rd_addr, (unsigned)c.read_type, line.lane[3], line.lane[2],
-                 line.lane[1], line.lane[0], (unsigned long long)(cycle + 1));
+    Sram *s=instance;Control c=Control_read(s->ports.in.control);
+    if((c.rd_en&&c.wr_en)||(c.rd_en&&!isa_address(c.rd_addr,0,SRAM_BYTES))||
+       (c.wr_en&&!isa_address(c.wr_addr,0,SRAM_BYTES))||
+       (c.rd_en&&s->regs.response.valid&&!c.read_consume)||
+       (c.read_consume&&!s->regs.response.valid)) goto fault;
+    if(c.wr_en) {
+        if(c.write_source==WRITE_STREAM) {if(!TileSignal_read(s->ports.in.input).valid) goto fault;}
+        else if(c.write_source==WRITE_RESULT) {if(!ResultSignal_read(s->ports.in.result).valid) goto fault;}
+        else goto fault;
     }
-    if (c.store_en) {
-        TileSignal result = TileSignal_read(s->ports.in.result);
-        Line128 line = mask_write(s->regs.lines[c.store_addr], result.tile, c.byte_enable);
-        s->regs.lines[c.store_addr] = line;
-        s->regs.writes++;
-        log_flow(cycle, "SRAM", "WRITE_128",
-                 "line_addr=0x%03X BE=0x%04X line=%08X_%08X_%08X_%08X",
-                 c.store_addr, c.byte_enable, line.lane[3], line.lane[2], line.lane[1], line.lane[0]);
-    }
-    if (logging_ports_enabled()) {
+    return true;
+fault:log_error(cycle,"SRAM","port conflict, invalid address or invalid transfer");return false;
+}
+static void clock_sram(void *instance,uint64_t cycle)
+{
+    Sram *s=instance;Control c=Control_read(s->ports.in.control);
+    if(logging_ports_enabled()) {
         log_block_begin("SRAM");
-        printf("  in read_en=%u rd_addr=0x%03X store_en=%u store_addr=0x%03X be=0x%04X\n",
-               c.read_enable, c.rd_addr, c.store_en, c.store_addr, c.byte_enable);
-        log_line("out response", TileSignal_read(s->ports.out.response).tile);
-        printf("  regs response_valid %u -> %u reads=%u writes=%u\n",
-               old_valid, s->regs.response_valid, s->regs.reads, s->regs.writes);
+        printf("  rd_en=%u rd_addr=%04X wr_en=%u wr_addr=%04X byte_enable=%04X response_valid=%u consume=%u\n",
+               c.rd_en,c.rd_addr,c.wr_en,c.wr_addr,c.byte_enable,s->regs.response.valid,c.read_consume);
+        log_line("read_response",s->regs.response.tile);
+        log_line("stream_write",TileSignal_read(s->ports.in.input).tile);
+        log_line("post_write",ResultSignal_read(s->ports.in.result).tile);
+    }
+    if(c.read_consume) s->regs.response.valid=false;
+    if(c.rd_en) {
+        s->regs.response=(TileSignal){s->regs.memory[c.rd_addr/16],true};s->regs.reads++;
+        log_flow(cycle,"SRAM","READ","address=0x%04X line=%u available_cycle=%llu",c.rd_addr,c.rd_addr/16,(unsigned long long)(cycle+1));
+    }
+    if(c.wr_en) {
+        Line128 data=c.write_source==WRITE_STREAM?TileSignal_read(s->ports.in.input).tile:ResultSignal_read(s->ports.in.result).tile;
+        for(unsigned b=0;b<16;b++) if(c.byte_enable&(1u<<b))
+            line_set_byte(&s->regs.memory[c.wr_addr/16],b,(uint8_t)line_byte(data,b));
+        s->regs.writes++;
+        log_flow(cycle,"SRAM","WRITE","address=0x%04X byte_enable=0x%04X source=%s",c.wr_addr,c.byte_enable,c.write_source==WRITE_STREAM?"stream":"post");
     }
 }
-
-const BlockOps sram_ops = {.publish = sram_publish, .check = sram_check, .clock = sram_clock};
-
-void sram_init(Sram *s)
-{
-    *s = (Sram){0};
-    for (unsigned l = 0; l < NETWORK_LAYERS; l++)
-    {
-        Line128 *w = &s->regs.lines[SRAM_L1_WEIGHTS + l];
-        Line128 *b = &s->regs.lines[SRAM_L1_BIASES + l];
-        for (unsigned r = 0; r < 4; r++)
-        {
-            w->lane[r] = pack_i8(trained_weights[l][r]); /* lane r = row r, byte c = W[r][c] */
-            b->lane[r] = (uint32_t)trained_biases[l][r];
-        }
-        s->regs.lines[SRAM_L1_CONFIG + l] = (Line128){{(uint32_t)requant_multiplier[l], requant_shift[l], relu_enable[l], 0}};
-    }
-    const int8_t initial[4][4]={{1,2,3,4},{-1,0,1,2},{10,-20,30,-40},{127,-128,64,-64}};
-    for(unsigned v=0;v<4;v++) s->regs.lines[SRAM_ACTIVATION_A].lane[v]=pack_i8(initial[v]);
-}
+const BlockOps sram_ops={.publish=publish,.check=check,.clock=clock_sram};

@@ -1,234 +1,198 @@
 #!/usr/bin/env python3
-"""Independent Python integer oracle plus edge-by-edge architecture regressions.
-Requires Python standard library and a C99 compiler; no torch/numpy/HLS tools.
-Temporary shared library stays outside the source tree.
+"""Self-contained ISA/cycle/numerical checks; no third-party dependencies.
+Optional --compiler ../compiler also checks current compiler-emitted images.
 """
-import ctypes as C
+import argparse
 from fractions import Fraction
-import json
-import os
 from pathlib import Path
 import random
 import re
-import shlex
+import struct
 import subprocess
+import sys
 import tempfile
 
-LATENCY=int(os.environ.get("POST_LATENCY", "1"))
-ROOT=Path(__file__).resolve().parents[1]
-SOURCES="logging.c controller.c sram.c reg128.c mac.c scale_clamp.c bus.c framework.c npu_top.c".split()
-BRIDGE=r"""
-#include "npu.h"
-#include <stdlib.h>
-void *create(unsigned batch,unsigned prefetch,unsigned fuse) {
-    Npu *n=calloc(1,sizeof *n);
-    if(!n || !npu_init_options(n,(NpuOptions){batch,prefetch!=0,fuse!=0})) {free(n);return NULL;}
-    return n;
-}
-void destroy(void *p) {free(p);}
-void put(void *p,unsigned addr,unsigned lane,uint32_t word) {((Npu *)p)->data.sram.regs.lines[addr].lane[lane]=word;}
-uint32_t get(void *p,unsigned addr,unsigned lane) {return ((Npu *)p)->data.sram.regs.lines[addr].lane[lane];}
-int step(void *p) {return npu_run(p,1);}
-uint64_t metric(void *p,unsigned key) {
-    Npu *n=p;Control c=n->buses.control.payload;
-    switch(key) {
-    case 0:return n->cycle-1;case 1:return n->data.sram.regs.reads;case 2:return n->data.sram.regs.writes;
-    case 3:return n->data.array.regs.updates;case 4:return n->data.array.regs.compute_cycles;case 5:return n->data.array.regs.peak_active;
-    case 6:return n->controller.regs.overlap_reads;case 7:return n->data.reg_i.regs.forwards;
-    case 8:return c.compute_en?2:0;case 9:return c.k+1;case 10:return c.bank;case 11:return c.read_enable;
-    case 12:return c.read_bank;case 13:return c.rd_addr;case 14:return c.layer;
-    default:return 0;
-    }
-}
-uint32_t input_bank(void *p,unsigned bank,unsigned lane) {return ((Npu *)p)->data.reg_i.regs.banks.bank[bank].line.lane[lane];}
-uint32_t weight_bank(void *p,unsigned bank,unsigned lane) {return ((Npu *)p)->data.reg_w.regs.banks.bank[bank].line.lane[lane];}
-int32_t acc(void *p,unsigned r,unsigned v) {return ((Npu *)p)->data.array.regs.sums.value[r][v];}
-int8_t requant(int32_t x,int32_t m,unsigned s) {return scale_clamp_value(x,m,s);}
-void bad_address(Npu *n) {n->controller.words[0].rd_addr=1024;}
-void active_bank_collision(Npu *n) {n->controller.regs.tag.bank=0;}
-int rejected_schedule(Npu *n, unsigned fault) {
-    Controller c=n->controller;
-    if(fault==0) c.words[0].store_en=true;
-    if(fault==1) c.words[0].rd_addr=1024;
-    if(fault==2) c.words[4].read_bank=0,c.words[4].rd_addr=0;
-    return !controller_validate(&c);
-}
-unsigned signature(Npu *n) {
-    Control c=n->buses.control.payload;
-    unsigned we=c.we_weight+2*c.we_input+4*c.we_bias+8*c.we_cfg;
-    return (c.compute_en?1+c.k+4*c.layer:0) |
-           (c.read_enable?(1+c.read_type+4*c.read_bank)<<4:0) |
-           (we?(we+16*c.capture_bank)<<8:0) |
-           ((unsigned)c.post_en<<13) | ((unsigned)c.forward_en<<14) |
-           ((unsigned)c.store_en<<15);
-}
 
-"""
+def instruction(op, src=0, dest=0, dims=0, flags=0):
+    return ((op << 124) | (src << 92) | (dest << 60) | (dims << 32) | flags).to_bytes(16, 'little')
 
-def arrays():
-    text=(ROOT/'trained_npu_params.h').read_text()
-    result={}
-    for name in ['trained_weights','trained_biases','requant_multiplier','requant_shift','relu_enable']:
-        literal=re.search(r'\b'+name+r'\s*(?:\[[^]]*\])+\s*=\s*(.*?);',text,re.S).group(1)
-        result[name]=json.loads(literal.replace('{','[').replace('}',']'))
-    return result
 
-P=arrays()
-def quant(x,m,s):return max(-128,min(127,round(Fraction(x*m,1<<s))))
-def reference(vector):
-    stages=[];x=list(vector)
-    for l in range(2):
-        partial=[];sums=list(P['trained_biases'][l])
-        for k in range(4):
-            sums=[sums[r]+P['trained_weights'][l][r][k]*x[k] for r in range(4)]
-            assert all(-(1<<31)<=v<(1<<31) for v in sums)
-            partial.append(list(sums))
-        act=[max(0,v) if P['relu_enable'][l] else v for v in sums]
-        x=[quant(v,P['requant_multiplier'][l],P['requant_shift'][l]) for v in act]
-        stages.append((partial,list(x)))
-    return stages
+def pack(rows):
+    return bytes((rows[v][k] if v < len(rows) and k < len(rows[v]) else 0) & 255
+                 for v in range(4) for k in range(4))
 
-def pack(x):return sum((v&255)<<(8*i) for i,v in enumerate(x))
-def unpack(x):return [((x>>(8*i))&255)-256 if ((x>>(8*i))&255)>=128 else ((x>>(8*i))&255) for i in range(4)]
+
+def image(program):
+    memory = bytearray(16384)
+    memory[0x3900:0x3900+16*len(program)] = b''.join(program)
+    return memory
+
+
+def write_hex(path, memory):
+    path.write_text(''.join(f'{int.from_bytes(memory[i:i+16], "little"):032X}\n'
+                            for i in range(0, len(memory), 16)))
+
+
+def metric(log, name):
+    return int(re.search(r'\b'+name+r'=(\d+)', log).group(1))
+
+
+def rounded(value, m, shift, relu):
+    return max(-128, min(127, round(Fraction(max(0, value) if relu else value, 1) * m / (1 << shift))))
+
+
+class Checks:
+    def __init__(self, binary, post, root):
+        self.binary, self.post, self.root = binary, post, root
+        self.count = 0
+
+    def run(self, mem, data=b'', batch=4, extra=(), failure=None):
+        write_hex(self.root/'sram.hex', mem)
+        (self.root/'input.bin').write_bytes(data)
+        result = subprocess.run([str(self.binary), '--sram', str(self.root/'sram.hex'),
+            '--input-bin', str(self.root/'input.bin'), '--output-bin', str(self.root/'output.bin'),
+            '--batch', str(batch), '--max-cycles', '3000', *extra], capture_output=True, text=True)
+        self.count += 1
+        if failure:
+            assert result.returncode != 0, 'expected failure'
+            assert failure in result.stderr, result.stderr
+            return result
+        assert result.returncode == 0, result.stderr
+        return (self.root/'output.bin').read_bytes(), result.stdout
+
+    def tile(self, batch, neurons, k, retain=False, forward=False, relu=False):
+        rng = random.Random(42+batch+neurons+k)
+        x = [[rng.randrange(-128,128) for _ in range(k)] for _ in range(batch)]
+        w = [[rng.randrange(-16,17) for _ in range(k)] for _ in range(neurons)]
+        b = [rng.randrange(-80,81) for _ in range(neurons)]
+        dims = neurons | batch << 4 | k << 8
+        program = [instruction(1,dest=0x2000,dims=16)]
+        for addr, field in ((0x3000,2),(0x3800,3),(0,1),(0x2000,0)):
+            program.append(instruction(8,addr,field,16))
+        program.append(instruction(2,dims=dims))
+        if retain:
+            # Change W while retaining the current accumulator file.
+            program += [instruction(8,0x10,1,16),instruction(2,dims=dims,flags=2)]
+        program.append(instruction(3,dest=0x2010,dims=neurons | batch << 4,flags=4))
+        if forward:
+            program += [instruction(4,dest=1,dims=neurons | batch << 4),
+                instruction(8,0x3020,6,16),instruction(8,0x3810,7,16),instruction(8,0x20,5,16),
+                instruction(2,dims=neurons | batch << 4 | neurons << 8,flags=1),
+                instruction(3,dest=0x2010,dims=neurons | batch << 4,flags=5)]
+        program += [instruction(5,src=0x2010,dims=16),instruction(15)]
+        mem=image(program);mem[:16]=pack(w)
+        w2=[[rng.randrange(-16,17) for _ in range(k)] for _ in range(neurons)]
+        mem[16:32]=pack(w2)
+        mem[32:48]=pack([[int(r==col) for col in range(neurons)] for r in range(neurons)])
+        mem[0x3000:0x3010]=struct.pack('<4i',*(b+[0]*(4-neurons)))
+        mem[0x3800:0x3810]=struct.pack('<4I',3,7,int(relu),0)
+        mem[0x3810:0x3820]=struct.pack('<4I',1,0,0,0)
+        expected=[[rounded(b[r]+sum(x[v][j]*(w[r][j]+(w2[r][j] if retain else 0)) for j in range(k)),3,7,relu)
+                   for r in range(neurons)] for v in range(batch)]
+        actual,log=self.run(mem,pack(x),batch)
+        assert actual==pack(expected),(actual,expected)
+        compute=k*(2 if retain else 1)+(neurons if forward else 0)
+        post_count=2 if forward else 1
+        loads=4+int(retain)+(3 if forward else 0)
+        # Each instruction: fetch request + response + decode + update = 4;
+        # Dispatch costs: load=2, MAC=K, post=1+latency, stream in=1,
+        # stream out=2, forward/halt=1.
+        cycles=4*len(program)+loads*2+compute+post_count*(1+self.post)+1+2+int(forward)+1
+        assert metric(log,'cycles')==cycles,(metric(log,'cycles'),cycles)
+        assert metric(log,'useful_macs')==compute*neurons*batch
+        assert metric(log,'compute_cycles')==compute
+        assert metric(log,'sram_reads')==len(program)+loads+1
+        assert metric(log,'sram_writes')==1+post_count
+        assert metric(log,'bus_stall_cycles')==0
+        return mem,pack(x),actual,cycles
+
+    def all(self):
+        for batch in range(1,5):
+            for n,k in ((4,4),(2,3),(1,1)):
+                self.tile(batch,n,k,retain=True,relu=n!=2)
+            self.tile(batch,3,4,forward=True)
+        mem,data,expected,cycles=self.tile(4,4,4,retain=True)
+        actual,log=self.run(mem,data,extra=('--input-delay','60','--output-delay','300'))
+        assert actual==expected
+        assert metric(log,'bus_stall_cycles')==metric(log,'cycles')-cycles
+        assert metric(log,'sram_reads')==metric(self.run(mem,data)[1],'sram_reads')
+        # Stream loop has two iterations and no implicit rewind or lost beats.
+        p=[instruction(6,src=2,dest=0x3910),instruction(1,dest=0x2000,dims=16),
+           instruction(5,src=0x2000,dims=16),instruction(7,dest=0x3910),instruction(15)]
+        actual,log=self.run(image(p),bytes(range(32)))
+        assert actual==bytes(range(32))
+        assert metric(log,'instructions')==8 and metric(log,'cycles')==42
+        self.run(image([instruction(9)]),failure='invalid instruction')
+        self.run(image([instruction(8,src=1,dest=1,dims=16)]),failure='invalid instruction')
+        self.run(image([instruction(8,src=0x3000,dest=1,dims=16)]),failure='invalid instruction')
+        self.run(image([instruction(2,dims=0x444,flags=2)]),failure='invalid operands')
+        self.run(image([instruction(3,dest=0x2000,dims=0x44,flags=4)]),failure='POST requires')
+        self.run(image([instruction(4,dest=0,dims=0x44)]),failure='invalid operands')
+        self.run(image([instruction(7,dest=0x3900)]),failure='invalid instruction')
+        self.run(image([instruction(6,src=2,dest=0x3910),instruction(15)]),failure='invalid instruction')
+        self.run(image([instruction(1,dest=0x2000,dims=16)]),failure='cycle limit')
+        self.run(image([instruction(15)]),bytes(16),failure='unused input')
+        bad=bytearray(mem);bad[0x3800:0x3804]=bytes(4)
+        self.run(bad,data,failure='invalid operands, config')
+        bad=bytearray(mem);bad[0x3000:0x3010]=struct.pack('<4i',*([2**31-1]*4));bad[:16]=bytes([127]*16)
+        self.run(bad,bytes([127]*16),failure='INT32 overflow')
+        self.run(mem,data,batch=1,failure='invalid instruction')
+        # Validate preloading failures, including trailing and short words.
+        for text in ('', '0\n'*1024, 'G'*32+'\n', '0'*32+'\n'*0, ('0'*32+'\n')*1025):
+            (self.root/'bad.hex').write_text(text)
+            p=subprocess.run([str(self.binary),'--sram',str(self.root/'bad.hex'),'--input-bin',str(self.root/'input.bin')],capture_output=True,text=True)
+            assert p.returncode and 'invalid SRAM hex' in p.stderr
+            self.count+=1
+
+    def compiler(self, directory):
+        sys.path.insert(0,str(directory.resolve()))
+        from compiler import compile_model, write_hex
+        from isa import encode_program
+        from verify import execute, pack_tensor, oracle, unpack_tensor
+        import numpy as np
+        rng=random.Random(42)
+        for shape in ((4,4,4),(4,8,8,2),(5,6,3),(3,2),(4,3,8)):
+            layers=[]
+            for li,(k,n) in enumerate(zip(shape,shape[1:])):
+                layers.append(dict(weights=[[rng.randrange(-12,13) for _ in range(k)] for _ in range(n)],
+                    bias=[rng.randrange(-100,101) for _ in range(n)], multiplier=3,shift=7,
+                    activation='relu' if li<len(shape)-2 else 'none',input_scale=1.0,output_scale=1.0))
+            for batch in range(1,5):
+                x=np.array([[rng.randrange(-128,128) for _ in range(shape[0])] for _ in range(batch)])
+                for forwarding in (False,True):
+                    compilation=compile_model(layers,batch,forwarding)
+                    memory=compilation.image(encode_program(compilation.instructions))
+                    data=pack_tensor(x);reference=execute(memory,data)
+                    actual,log=self.run(memory,data,batch)
+                    assert actual==reference['output']
+                    assert unpack_tensor(actual,batch,shape[-1]).tolist()==oracle(layers,x)[0][-1]
+                    assert metric(log,'instructions')==reference['instructions']
+                    assert metric(log,'useful_macs')==reference['useful_macs']
+                    steps=[(event['pc'],s) for event in reference['trace'] for s in event.get('steps',[])]
+                    pattern=r'PE\s+pc=0x([0-9A-F]+) k=(\d+) r=(\d+) v=(\d+) acc=(-?\d+)'
+                    observed=re.findall(pattern,log)
+                    if not observed:
+                        raise AssertionError('--compiler comparison requires LOG=flow or LOG=both')
+                    expected=[]
+                    for pc,step in steps:
+                        for r,row in enumerate(step['accumulators']):
+                            for v,value in enumerate(row): expected.append((pc,step['local_k'],r,v,value))
+                    assert [(int(p,16),int(k),int(r),int(v),int(a)) for p,k,r,v,a in observed]==expected
+                    dispatch=sum((2 if i.op in (5,8) else (i.dims>>8)&15 if i.op==2 else 1+self.post if i.op==3 else 1)
+                                 for i in compilation.instructions)
+                    assert metric(log,'cycles')==4*len(compilation.instructions)+dispatch
+                    if shape==(4,8,8,2) and batch==4 and not forwarding:
+                        print('Compiler 4->8->8->2:',re.search(r'METRICS.*',log).group())
+        print('Compiler integration: final output, independent tensor oracle, every PE accumulator and cycle formulas passed')
 
 
 def main():
-    rng=random.Random(42);case_count=vector_count=0;times={}
-    with tempfile.TemporaryDirectory(prefix='tiny-npu-check-') as td:
-        td=Path(td);(td/'bridge.c').write_text(BRIDGE)
-        cmd=shlex.split(os.environ.get('CC','cc'))+['-std=c99','-O1','-g','-Wall','-Wextra','-Werror','-fPIC','-shared',
-             '-fsanitize=undefined','-fno-sanitize-recover=all',f'-DPOST_LATENCY={LATENCY}','-DNPU_LOG_FLOW=0','-DNPU_LOG_PORTS=0','-I',str(ROOT),str(td/'bridge.c')]
-        cmd += [str(ROOT/s) for s in SOURCES]+['-o',str(td/'check.so')]
-        subprocess.run(cmd,check=True)
-        lib=C.CDLL(str(td/'check.so'))
-        lib.create.argtypes=[C.c_uint]*3;lib.create.restype=C.c_void_p
-        lib.destroy.argtypes=[C.c_void_p]
-        for name in ['put'] :getattr(lib,name).argtypes=[C.c_void_p,C.c_uint,C.c_uint,C.c_uint32]
-        for name in ['get','input_bank','weight_bank']:
-            fn=getattr(lib,name);fn.argtypes=[C.c_void_p,C.c_uint,C.c_uint];fn.restype=C.c_uint32
-        lib.step.argtypes=[C.c_void_p];lib.step.restype=C.c_int
-        lib.metric.argtypes=[C.c_void_p,C.c_uint];lib.metric.restype=C.c_uint64
-        lib.acc.argtypes=[C.c_void_p,C.c_uint,C.c_uint];lib.acc.restype=C.c_int32
-        lib.requant.argtypes=[C.c_int32,C.c_int32,C.c_uint];lib.requant.restype=C.c_int8
-        for name in ['bad_address','active_bank_collision']:getattr(lib,name).argtypes=[C.c_void_p]
+    p=argparse.ArgumentParser();p.add_argument('--binary',type=Path,required=True)
+    p.add_argument('--post-latency',type=int,default=1,choices=(0,1));p.add_argument('--compiler',type=Path)
+    args=p.parse_args()
+    with tempfile.TemporaryDirectory(prefix='tiny-npu-check-') as temporary:
+        checks=Checks(args.binary.resolve(),args.post_latency,Path(temporary));checks.all()
+        if args.compiler: checks.compiler(args.compiler)
+        print(f'{checks.count} model checks passed (POST_LATENCY={args.post_latency})')
 
-        def check(vectors,prefetch,fuse):
-            nonlocal case_count,vector_count
-            batch=len(vectors);n=lib.create(batch,prefetch,fuse);assert n
-            try:
-                refs=[reference(x) for x in vectors]
-                for v,x in enumerate(vectors):lib.put(n,0x200,v,pack(x))
-                for v in range(batch,4):lib.put(n,0x200,v,0xA5A50000+v)
-                for v in range(4):lib.put(n,0x201,v,0x5A5A0000+v)
-                shadow_weight=[pack(row) for row in P['trained_weights'][0]]
-                trace=[]
-                for _ in range(128):
-                    before=lib.metric(n,3);status=lib.step(n);assert status!=0
-                    kind,k,bank,read,read_bank,address,layer=[lib.metric(n,key) for key in range(8,15)]
-                    trace.append((kind,k,layer))
-                    if kind==2: # EDGE_COMPUTE
-                        assert lib.metric(n,3)-before==4*batch
-                        assert not read or read_bank!=bank
-                        for r in range(4):
-                            for v in range(batch):assert lib.acc(n,r,v)==refs[v][layer][0][k-1][r]
-                            for v in range(batch,4):assert lib.acc(n,r,v)==0
-                        if layer==0:
-                            for r in range(4):assert lib.weight_bank(n,0,r)==shadow_weight[r]
-                    else:assert lib.metric(n,3)==before
-                    if fuse and layer==1 and kind==2:
-                        for v in range(batch):assert lib.input_bank(n,1,v)==pack(refs[v][0][1])
-                    if status==1:break
-                else:raise AssertionError('controller did not finish')
-                assert lib.metric(n,3)==32*batch and lib.metric(n,4)==8 and lib.metric(n,5)==4*batch
-                assert lib.metric(n,1)==(7 if fuse else 8)
-                assert lib.metric(n,2)==(1 if fuse else 2)
-                assert lib.metric(n,6)==(3 if prefetch else 0)
-                assert lib.metric(n,7)==(1 if fuse else 0)
-                for v in range(batch):assert unpack(lib.get(n,0x200,v))==refs[v][1][1]
-                for v in range(batch,4):assert lib.get(n,0x200,v)==0xA5A50000+v
-                for v in range(4):
-                    expected=pack(refs[v][0][1]) if not fuse and v<batch else 0x5A5A0000+v
-                    assert lib.get(n,0x201,v)==expected
-                # 4 initial reads, 8 MACs, 2 posts, and one drain per
-                # post register. Unfused reload costs two edges with
-                # prefetch. Otherwise it shares capture with parameter reads.
-                extra = 2*(not fuse) if prefetch else 3+(not fuse)
-                cycles=lib.metric(n,0)
-                assert cycles==4+8+2+2*LATENCY+extra
-                times.setdefault((prefetch,fuse),cycles);assert times[prefetch,fuse]==cycles
-                case_count+=1;vector_count+=batch
-            finally:lib.destroy(n)
-
-        fixtures=json.loads((ROOT/'npu_reference_vectors.json').read_text())
-        # Existing exported examples (the JSON also preserves the original source metadata).
-        examples=fixtures['vectors'] if isinstance(fixtures,dict) and 'vectors' in fixtures else fixtures
-        # Deterministic boundary/mapping vectors plus randomized, distinct batches.
-        boundaries=[item['input_q'] for item in examples]
-        for prefetch in (0,1):
-            for fuse in (0,1):
-                for x in boundaries:check([x],prefetch,fuse)
-                for batch in range(1,5):
-                    for _ in range(64):check([[rng.randrange(-128,128) for _ in range(4)] for _ in range(batch)],prefetch,fuse)
-        # Compare notebook fixtures to the independent oracle too, if the export uses this layout.
-        if isinstance(examples,list):
-            for item in examples:
-                assert reference(item['input_q'])[-1][1]==item['expected_output_q']
-        # Requantization boundary/tie tests, including every legal shift.
-        for shift in range(63):
-            for m in [1,3,1585768005,2147483647]:
-                for x in [-2147483648,-257,-129,-3,-1,0,1,3,127,255,2147483647]:
-                    assert lib.requant(x,m,shift)==quant(x,m,shift)
-        assert not lib.create(0,1,1) and not lib.create(5,1,1)
-        def fault(setup,steps=128,before=None):
-            n=lib.create(1,1,1);assert n
-            try:
-                setup(n)
-                for i in range(steps):
-                    if before:before(n,i+1)
-                    if lib.step(n)==0:
-                        assert i+1==steps and lib.metric(n,0)==i
-                        assert lib.step(n)==0 and lib.metric(n,0)==i
-                        return
-                raise AssertionError('fault not rejected')
-            finally:lib.destroy(n)
-        fault(lib.bad_address,1)
-        for lane,value in [(0,0),(0,0x80000000),(1,63),(2,2),(3,1)]:
-            fault(lambda n,lane=lane,value=value:lib.put(n,0x380,lane,value),5)
-        fault(lambda n:lib.put(n,0x300,0,0x7fffffff),5)
-        fault(lambda n:None,6,lambda n,cycle:lib.active_bank_collision(n) if cycle==6 else None)
-        lib.rejected_schedule.argtypes=[C.c_void_p,C.c_uint]
-        lib.signature.argtypes=[C.c_void_p]
-        lib.signature.restype=C.c_uint
-        n=lib.create(4,1,1)
-        assert n
-        try:
-            for f in range(3):
-                assert lib.rejected_schedule(n,f)
-            # Manual default trace. The fields describe compute wave,
-            # encoded read, capture mask with bank, post, forward, store.
-            head=[
-                (0,1,0,0,0,0), (0,2,1,0,0,0), (0,3,2,0,0,0),
-                (0,4,4,0,0,0), (1,5,8,0,0,0), (2,7,17,0,0,0),
-                (3,8,20,0,0,0), (4,0,24,0,0,0),
-            ]
-            if LATENCY:
-                head += [(0,0,0,1,0,0),(0,0,0,0,1,0)]
-            else:
-                head += [(0,0,0,1,1,0)]
-            head += [(k,0,0,0,0,0) for k in range(5,9)]
-            if LATENCY:
-                head += [(0,0,0,1,0,0),(0,0,0,0,0,1)]
-            else:
-                head += [(0,0,0,1,0,1)]
-            for i,(mac,rd,we,post,fwd,wr) in enumerate(head):
-                assert lib.step(n)==(1 if i+1==len(head) else 2)
-                assert lib.signature(n)==mac+(rd<<4)+(we<<8)+(post<<13)+(fwd<<14)+(wr<<15),i+1
-        finally:
-            lib.destroy(n)
-        print(f'PASS: POST_LATENCY={LATENCY}, {len(head)} hand-checked batch-4 edges and schedule fault injection.')
-        # Deliberate faults above emit expected diagnostics to stderr.
-    print(f'PASS: {case_count} batch inferences / {vector_count} independent vectors; all intermediate MACs and final outputs match.')
-    print('PASS: masked writes, old-value register timing, bank isolation, hidden bypass, single-port overlap and fault checks.')
-    print('PASS: integer quantization boundary/tie tests for all shifts 0..62 (UBSan enabled).')
-    for (prefetch,fuse),cycles in sorted(times.items()):print(f'  PREFETCH={prefetch} FUSE={fuse}: {cycles} cycles per batch of 1..4 vectors')
-if __name__=='__main__':main()
+if __name__=='__main__': main()

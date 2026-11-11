@@ -23,7 +23,7 @@ void log_error(uint64_t cycle,const char *block,const char *format,...)
 
 void log_cycle_begin(uint64_t cycle)
 {
-    if(logging_ports_enabled()) printf("\n================ CYCLE %06" PRIu64 " ================\n",cycle);
+    if(logging_ports_enabled() || logging_flow_enabled()) printf("\n================ CYCLE %06" PRIu64 " ================\n",cycle);
 }
 void log_block_begin(const char *name) { if(logging_ports_enabled()) printf("\n[BLOCK] %s\n",name); }
 

@@ -1,62 +1,42 @@
 #include "tb.h"
-#include "npu.h"
 #include <ctype.h>
 #include <errno.h>
-#include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-static void tb_print_vector(const int8_t values[ARRAY_SIZE])
+int tb_supply(Stream *s,unsigned batch,unsigned features,bool interactive)
 {
-    printf("[%d, %d, %d, %d]",values[0],values[1],values[2],values[3]);
-}
-
-static int tb_infer(const int8_t input[4][4],uint64_t number)
-{
-    Npu system;
-    printf("\n========== Inference batch %" PRIu64 " : START ==========\n",number);
-    if(!npu_init(&system)) { fprintf(stderr,"[TB] NPU initialization failed.\n");return 1; }
-    unsigned batch=system.controller.options.batch;
-    uint32_t input_address=system.controller.layers[0].input_base;
-    uint32_t output_address=system.controller.layers[NETWORK_LAYERS-1].output_base;
-    /* One independent vector per lane. No replication to fake utilization.
-     * Direct host preload occurs while idle, outside the simulated port timing. */
-    for(unsigned v=0;v<batch;v++) system.data.sram.regs.lines[input_address].lane[v]=pack_i8(input[v]);
-    printf("[TB] SRAM preload: line_address=0x%03" PRIX32 " independent_vectors=%u\n",input_address,batch);
-    uint64_t first_cycle=system.cycle;
-    if(npu_run(&system,NPU_INFERENCE_CYCLES)!=NPU_RUN_COMPLETE) {
-        fprintf(stderr,"[TB] Inference did not complete; no prediction reported.\n");return 1;
-    }
-    const Line128 *result=&system.data.sram.regs.lines[output_address];
-    printf("\n========== Inference batch %" PRIu64 " : RESULT ==========\n",number);
-    printf("Cycles for complete batch: %" PRIu64 "\n",system.cycle-first_cycle);
+    size_t beats=(features+3)/4;s->regs.input_count=beats;s->regs.input_index=0;
+    memset(s->regs.input,0,beats*sizeof s->regs.input[0]);
     for(unsigned v=0;v<batch;v++) {
-        int8_t output[4];
-        for(unsigned r=0;r<4;r++) output[r]=unpack_i8(result->lane[v],r);
-        printf("Vector %u input: ",v+1);tb_print_vector(input[v]);putchar('\n');
-        printf("Predicted output (quantized INT8): ");tb_print_vector(output);putchar('\n');
-        printf("SRAM result: line_address=0x%03" PRIX32 " lane=%u word=0x%08" PRIX32 "\n",output_address,v,result->lane[v]);
-    }
-    printf("Useful MACs: %u; compute clocks: %u; peak active: %u/16\n",system.data.array.regs.updates,system.data.array.regs.compute_cycles,system.data.array.regs.peak_active);
-    printf("Compute utilization: %.2f%%; whole-run utilization: %.2f%%\n",
-           100.0*system.data.array.regs.updates/(16*system.data.array.regs.compute_cycles),
-           100.0*system.data.array.regs.updates/(16*(system.cycle-first_cycle)));
-    puts("================================================\n");return 0;
-}
-int tb_run(void)
-{
-    const unsigned total_batches = 100;
-
-    srand(42);
-    for (unsigned number = 1; number <= total_batches; number++) {
-        int8_t input[4][4] = {{0}};
-        for (unsigned v = 0; v < NPU_BATCH; v++) {
-            for (unsigned k = 0; k < ARRAY_SIZE; k++)
-                input[v][k] = (int8_t)((rand() % 256) - 128);
+        char text[8192],*p=NULL;
+        if(interactive) {
+            printf("Vector %u/%u: enter %u quantized INT8 values (q to quit): ",v+1,batch,features);fflush(stdout);
+            if(!fgets(text,sizeof text,stdin)) return 0;
+            if(!strchr(text,'\n')&&!feof(stdin)) return -1;
+            p=text;while(isspace((unsigned char)*p)) p++;
+            if(*p=='q'||*p=='Q') return 0;
         }
-        if (tb_infer(input, number))
-            return 1;
+        for(unsigned f=0;f<features;f++) {
+            long value;
+            if(interactive) {
+                char *end;errno=0;value=strtol(p,&end,10);
+                if(end==p||errno||value< -128||value>127) return -1;
+                p=end;
+            } else value=rand()%256-128;
+            line_set_byte(&s->regs.input[f/4],v*4+f%4,(uint8_t)value);
+        }
+        if(interactive) {while(isspace((unsigned char)*p)) p++;if(*p) return -1;}
     }
-    return 0;
+    return 1;
+}
+void tb_print_tensor(const char *label,const Line128 *beats,size_t count,unsigned batch,unsigned features)
+{
+    printf("%s\n",label);
+    if(count!=(features+3)/4) {printf("  beat count differs from requested feature count\n");return;}
+    for(unsigned v=0;v<batch;v++) {
+        printf("  vector %u: [",v);
+        for(unsigned f=0;f<features;f++) printf("%s%d",f?", ":"",line_byte(beats[f/4],v*4+f%4));
+        puts("]");
+    }
 }

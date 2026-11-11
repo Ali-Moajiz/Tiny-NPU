@@ -1,96 +1,56 @@
 CC ?= cc
-CFLAGS ?= -std=c99 -O0 -g -Wall -Wextra -Werror
-CPPFLAGS ?=
-LDFLAGS ?=
-
-# TB selects the entry point; hardware block sources are identical in both builds.
 TB ?= 0
-ifneq ($(words $(TB)),1)
-$(error TB must contain exactly one value: 0 or 1)
-endif
-ifeq ($(filter $(TB),0 1),)
-$(error Invalid TB=$(TB). Use 0 or 1)
-endif
-
-# Hardware dimensions remain 4x4. BATCH masks 1..4 independent vector columns.
 BATCH ?= 1
-PREFETCH ?= 1
-FUSE ?= 1
-ifneq ($(words $(BATCH)),1)
-$(error BATCH must be one integer 1..4)
-endif
-ifeq ($(filter $(BATCH),1 2 3 4),)
-$(error BATCH must be 1, 2, 3 or 4)
-endif
-ifneq ($(words $(PREFETCH)),1)
-$(error PREFETCH must be 0 or 1)
-endif
-ifeq ($(filter $(PREFETCH),0 1),)
-$(error PREFETCH must be 0 or 1)
-endif
-ifneq ($(words $(FUSE)),1)
-$(error FUSE must be 0 or 1)
-endif
-ifeq ($(filter $(FUSE),0 1),)
-$(error FUSE must be 0 or 1)
-endif
-# Isolate every build option; changing flags needs no clean.
-
 LOG ?= flow
-ifneq ($(words $(LOG)),1)
-$(error LOG must contain exactly one mode: flow, ports, both or none)
-endif
-ifeq ($(filter $(LOG),flow ports both none),)
-$(error Invalid LOG=$(LOG). Use flow, ports, both or none)
-endif
-FLOW_ENABLED := $(if $(filter flow both,$(LOG)),1,0)
-PORTS_ENABLED := $(if $(filter ports both,$(LOG)),1,0)
 POST_LATENCY ?= 1
-LOG_FLAGS = -DPOST_LATENCY=$(POST_LATENCY) -DNPU_LOG_FLOW=$(FLOW_ENABLED) -DNPU_LOG_PORTS=$(PORTS_ENABLED) -DNPU_BATCH=$(BATCH) -DNPU_PREFETCH=$(PREFETCH) -DNPU_FUSE=$(FUSE)
-BUILD_DIR := build/tb$(TB)/b$(BATCH)-p$(PREFETCH)-f$(FUSE)/post$(POST_LATENCY)/$(LOG)
-TARGET := $(BUILD_DIR)/tiny_npu
-CORE_SOURCES := logging.c controller.c sram.c reg128.c mac.c scale_clamp.c bus.c framework.c npu_top.c
-ifeq ($(TB),1)
-ENTRY_SOURCES := tb_main.c tb.c
-else
-ENTRY_SOURCES := main.c
+SANITIZE ?= 0
+ifneq ($(filter $(TB),0 1),$(TB))
+$(error TB must be 0 or 1)
 endif
-SOURCES := $(CORE_SOURCES) $(ENTRY_SOURCES)
-OBJECTS := $(SOURCES:%.c=$(BUILD_DIR)/%.o)
-LOG_FILE ?= $(LOG).log
-
-.PHONY: all run log check clean help
-all: $(TARGET)
-$(TARGET): $(OBJECTS)
-	$(CC) $(LDFLAGS) $(OBJECTS) -o $@
-$(BUILD_DIR)/%.o: %.c Makefile
-	@mkdir -p $(BUILD_DIR)
-	$(CC) $(CPPFLAGS) $(LOG_FLAGS) $(CFLAGS) -MMD -MP -c $< -o $@
-run: $(TARGET)
-	./$(TARGET)
-log: $(TARGET)
-	./$(TARGET) > "$(LOG_FILE)"
-	@echo "Saved $(LOG_FILE) (LOG=$(LOG))"
-# End-to-end integer reference, partial batches, timing/port invariants and faults.
-build/check_bus: tests/check_bus.c framework.c bus.c logging.c framework.h bus.h logging.h datapath.h Makefile
-	@mkdir -p build
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -I. tests/check_bus.c framework.c bus.c logging.c -o $@
-check: build/check_bus
-	./build/check_bus
-	POST_LATENCY=0 python3 tests/check_model.py
-	POST_LATENCY=1 python3 tests/check_model.py
+ifneq ($(filter $(BATCH),1 2 3 4),$(BATCH))
+$(error BATCH must be 1..4 and match the compiled program)
+endif
+ifneq ($(filter $(POST_LATENCY),0 1),$(POST_LATENCY))
+$(error POST_LATENCY must be 0 or 1)
+endif
+ifneq ($(filter $(LOG),none flow ports both),$(LOG))
+$(error LOG must be none, flow, ports or both)
+endif
+ifneq ($(origin PREFETCH),undefined)
+$(error PREFETCH is encoded by the instruction program, not a C-model build switch)
+endif
+ifneq ($(origin FUSE),undefined)
+$(error FUSE is encoded by LOAD_OPERAND/FORWARD instructions, not a C-model build switch)
+endif
+BUILD := build/tb$(TB)-b$(BATCH)-post$(POST_LATENCY)-$(LOG)-san$(SANITIZE)
+BIN := $(BUILD)/tiny_npu
+SOURCES := bus.c framework.c logging.c isa.c controller.c instructions.c sram.c stream.c mac.c activation.c scale_clamp.c npu_top.c main.c
+ifeq ($(TB),1)
+SOURCES += tb.c
+endif
+OBJECTS := $(SOURCES:%.c=$(BUILD)/%.o)
+CPPFLAGS += -DNPU_TB=$(TB) -DNPU_BATCH=$(BATCH) -DPOST_LATENCY=$(POST_LATENCY) -DNPU_LOG_FLOW=$(if $(filter flow both,$(LOG)),1,0) -DNPU_LOG_PORTS=$(if $(filter ports both,$(LOG)),1,0)
+CFLAGS ?= -O2 -g
+CFLAGS += -std=c99 -Wall -Wextra -Werror -MMD -MP
+ifeq ($(SANITIZE),1)
+CFLAGS += -O1 -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie
+LDFLAGS += -fsanitize=address,undefined -no-pie
+endif
+.PHONY: all run clean test
+all: $(BIN)
+$(BIN): $(OBJECTS)
+	$(CC) $(OBJECTS) $(LDFLAGS) -o $@
+$(BUILD)/%.o: %.c
+	@mkdir -p $(dir $@)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
+run: $(BIN)
+	$(BIN) --sram "$(SRAM)" $(ARGS)
+test: $(BIN)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -I. tests/check_bus.c bus.c framework.c logging.c $(LDFLAGS) -o $(BUILD)/check_bus
+	$(BUILD)/check_bus
+	$(CC) $(CPPFLAGS) $(CFLAGS) -I. tests/check_core.c $(filter-out main.c tb.c,$(SOURCES)) $(LDFLAGS) -o $(BUILD)/check_core
+	$(BUILD)/check_core
+	python3 tests/check_model.py --binary $(BIN) --post-latency $(POST_LATENCY)
 clean:
-	$(RM) -r build
-help:
-	@echo 'make run TB=0 LOG=flow  # existing single run (default); no TB code linked'
-	@echo 'make run TB=1 LOG=flow  # seeded random batches and cycle flow'
-	@echo 'make run TB=1 LOG=none  # results only'
-	@echo 'make run LOG=flow   # pipeline events (default)'
-	@echo 'make run LOG=ports  # all block ports every cycle'
-	@echo 'make run LOG=both   # both views'
-	@echo 'make run LOG=none   # silent on success; errors still go to stderr'
-	@echo 'make run TB=1 BATCH=4 LOG=flow  # four independent vectors; all 16 PEs active in compute'
-	@echo 'make run BATCH=4 PREFETCH=0 FUSE=0  # disable optimizations for comparison'
-	@echo 'make check          # numerical, timing, masking, bank and error regressions'
-	@echo 'make log LOG=flow   # save flow.log; replace LOG for another view'
+	rm -rf build
 -include $(OBJECTS:.o=.d)
