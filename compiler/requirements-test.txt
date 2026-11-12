@@ -1,3 +1,0 @@
--r requirements-build.txt
-# Optional real-export integration test; not a compiler runtime dependency.
-onnxruntime==1.20.1

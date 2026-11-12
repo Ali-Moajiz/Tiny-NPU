@@ -53,7 +53,7 @@ configuration. `--max-cycles N` limits execution (default 100000).
 | `isa.c` | Decode the 128-bit instruction fields |
 | `controller.c` | Fetch, response, decode, dispatch, update lifecycle |
 | `instructions.c` | Dedicated instruction callbacks and opcode registration |
-| `sram.c` | Hex preload, single-port 1024x128 memory, registered read response |
+| `sram.c` | Hex preload, single-port 65536x128 memory, registered read response |
 | `stream.c` | Simulation input/output stream endpoint and back-pressure |
 | `mac.c` | Two operand slots inside the MAC and the 4x4 accumulator array |
 | `activation.c` | Combinational ReLU/bypass |
@@ -75,18 +75,47 @@ endpoint is a simulator peripheral, not an internal post-processing FIFO.
 
 ## SRAM and instruction ABI
 
-`sram.hex` must contain exactly 1024 lines of 32 hex digits. Each line is bits
+`sram.hex` must contain exactly 65,536 data words of 32 hex digits. Each line is bits
 127..0, with the lowest-address byte at the right. Blank lines and `#`/`//`
 comments are accepted. Malformed or incomplete files are rejected before
 execution. SRAM accesses use byte addresses, aligned to 16 bytes.
 
 | Byte address range | Contents |
 |---|---|
-| `0x0000–0x1FFF` | INT8 weights |
-| `0x2000–0x2FFF` | Input/intermediate/output tiles |
-| `0x3000–0x37FF` | INT32 biases in accumulator units |
-| `0x3800–0x38FF` | CFG: multiplier, shift, ReLU flag, reserved zero |
-| `0x3900–0x3FFF` | Instructions; reset PC = `0x3900` |
+| `0x00000–0xBFFFF` | INT8 weights (768 KiB) |
+| `0xC0000–0xDFFFF` | Input/intermediate/output tiles |
+| `0xE0000–0xEFFFF` | INT32 biases in accumulator units |
+| `0xF0000–0xF0FFF` | CFG: multiplier, shift, ReLU flag, reserved zero |
+| `0xF1000–0xFFFFF` | Instructions; reset PC = `0xF1000` |
+
+The SRAM is one 1 MiB block: 65,536 × 128 bits. Region ends are exclusive
+`0xC0000`, `0xE0000`, `0xF0000`, `0xF1000`, `0x100000`; capacities are 768,
+128, 64, 4 and 60 KiB. Physical word address is byte address / 16 (16 bits).
+The final beat is `0xFFFF0`; `0x100000` is outside memory. The loader stages
+its image on the host heap and commits only a fully validated image; the NPU
+and reset snapshot have static host storage to avoid large stack allocations.
+File I/O occurs only at initialization, never during simulated memory accesses.
+
+Compiler and model must use the same memory map. **Recompile old 16 KiB images**:
+
+```sh
+# From the repository root; alternatively use python3 compiler/main.py.
+./compiler/bin/tiny-npu-compiler model.onnx --calibration samples.npy --out output --debug
+make -C c-model run TB=1 BATCH=4 LOG=flow SRAM=../output/sram.hex \
+  ARGS="--runs 100 --seed 42 --input-features 4 --output-features 2"
+```
+
+To rebuild the executable, install compiler/requirements.txt and
+`pyinstaller==6.16.0 pyinstaller-hooks-contrib==2025.9`, then run
+`make -C compiler binary PYTHON=python3`. `sram.bin` is exactly 1,048,576 bytes;
+`params.bin` is 987,136 bytes including unused gaps before entry PC.
+`program.bin`/`program.hex` contain only instructions, not a full SRAM image.
+Hex and other debug reports still require `--debug`.
+
+The program region holds 3,840 instructions. Stream buffers still hold 256
+beats (up to 1,024 input/output features), and batches remain 1–4. Only existing
+operators, two operand slots and the existing forwarding cases are supported.
+Increasing SRAM does not change instruction encoding or dispatch timing.
 
 Instruction layout: opcode `[127:124]`, src `[123:92]`, dest `[91:60]`, dims
 `[59:32]`, flags `[31:0]`. Dims packs N in `[3:0]`, batch in `[7:4]`, K in
@@ -160,6 +189,10 @@ make -s test LOG=flow POST_LATENCY=0 SANITIZE=1
 make -s LOG=flow
 python3 tests/check_model.py \
   --binary build/tb0-b1-post1-flow-san0/tiny_npu --compiler ../compiler
+
+# Independent random/interactive TB checks (requires compiler dependencies).
+make -s TB=1 BATCH=4 LOG=flow
+python3 tests/check_tb.py --binary build/tb1-b4-post1-flow-san0/tiny_npu --compiler ../compiler
 ```
 
 The built-in suite uses only Python's standard library. The optional compiler
@@ -167,5 +200,9 @@ comparison needs the compiler's Python dependencies and `LOG=flow` or `both`.
 Tests cover all implemented opcodes, partial tiles, batches 1–4, retained sums,
 forwarding, back-pressure, signed rounding, masked stores, malformed images,
 overflow, and invalid instruction/state rejection. Expected fault tests print
-error messages. On hosts that prohibit LeakSanitizer tracing, use
+error messages. Map tests check every region's first/last beat, exclusive end,
+alignment, and access to the final physical beat. The image loader helper
+checks every loaded byte and transactional rejection of malformed files.
+The optional compiler comparison includes a 4->100->100->1 network whose
+weights exceed the old 8 KiB region. On hosts that prohibit LeakSanitizer tracing, use
 `ASAN_OPTIONS=detect_leaks=0`; address and undefined-behavior checks remain enabled.

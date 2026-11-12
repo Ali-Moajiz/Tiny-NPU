@@ -1,6 +1,4 @@
-# ---------- Compiled output ----------
-# The binary built by `make` (no file extension, so it must be named here).
-# The patterns without a slash match in training/, inference/ and any other folder.
+# ---------- C builds (training/ and c-model/) ----------
 nn
 nn_*
 tiny_npu
@@ -17,6 +15,34 @@ tiny_npu
 build/
 bin/
 
+# ---------- Compiler and model workflow ----------
+# Compiler images, parameters, assembly, manifests and debug reports.
+# Keep file extensions unrestricted so source fixtures can be committed.
+/output/
+/output-*/
+/compiled/
+*_compiled/
+
+# Training exports and reference results (also covered by test-dnn/.gitignore).
+/test-dnn/artifacts/
+/test-dnn/compiled/
+/test-dnn/results.json
+/test-dnn-large/artifacts/
+/test-dnn-large/compiled/
+/test-dnn-large/results.json
+# Generic model-export directory used in the main README.
+/my-model/
+
+# Default runtime stream files from the C-model README.
+/c-model/input.bin
+/c-model/output.bin
+/input.bin
+/output.bin
+
+# Rebuilt distribution archives.
+/compiler.zip
+/c-model.zip
+
 # ---------- Debug / sanitizer / profiling ----------
 *.dSYM/
 core
@@ -29,11 +55,7 @@ callgrind.out.*
 perf.data*
 
 # ---------- Editor and OS ----------
-# Ignore the whole .vscode folder. To share settings instead, delete this line
-# and use these three instead:
-#   .vscode/*
-#   !.vscode/tasks.json
-#   !.vscode/launch.json
+# Keep the shared extension recommendations.
 .vscode/*
 !.vscode/extensions.json
 .idea/
@@ -48,12 +70,14 @@ __pycache__/
 .venv/
 venv/
 .ipynb_checkpoints/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+*.egg-info/
+dist/
 
 # ---------- Logs ----------
 *.log
-
-# ---------- Trained models ----------
-# *.weights
-# *.model
-# *.bin
-# *.csv

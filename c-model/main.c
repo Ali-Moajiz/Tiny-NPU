@@ -64,9 +64,11 @@ int main(int argc,char **argv)
     }
     if(input) runs=1;
     if(output&&runs>1) {fprintf(stderr,"--output-bin requires one run (--runs 1)\n");return 2;}
-    Npu n;npu_init(&n);char error[256];
+    /* Stable final address: internal ports point into n.wires. Keep the large
+     * instance and reset snapshot off the host stack. */
+    static Npu n;npu_init(&n);char error[256];
     if(!sram_load_hex(&n.sram,image,error,sizeof error)) {fprintf(stderr,"%s\n",error);return 1;}
-    Line128 initial_image[SRAM_LINES];memcpy(initial_image,n.sram.regs.memory,sizeof initial_image);
+    static Line128 initial_image[SRAM_LINES];memcpy(initial_image,n.sram.regs.memory,sizeof initial_image);
     srand((unsigned)seed);
     for(uint64_t run=0;run<runs;run++) {
         if(run) {npu_init(&n);memcpy(n.sram.regs.memory,initial_image,sizeof initial_image);}

@@ -41,12 +41,12 @@ static bool check(void *instance,uint64_t cycle)
         int x=line_byte(s->operand[OPERAND_X],v*4+c.k),w=line_byte(s->operand[OPERAND_W],r*4+c.k);
         int64_t sum=(int64_t)prior+x*w;
         if(sum<INT32_MIN||sum>INT32_MAX) {
-            log_error(cycle,"MAC","INT32 overflow pc=0x%04X k=%u neuron=%u vector=%u",c.pc,c.k,r,v);return false;
+            log_error(cycle,"MAC","INT32 overflow pc=0x%05X k=%u neuron=%u vector=%u",c.pc,c.k,r,v);return false;
         }
         m->products_added.value[r][v]=(int32_t)sum;
     }
     return true;
-fault:log_error(cycle,"MAC","invalid operands, config, accumulation or forwarding pc=0x%04X",c.pc);return false;
+fault:log_error(cycle,"MAC","invalid operands, config, accumulation or forwarding pc=0x%05X",c.pc);return false;
 }
 static void clock_mac(void *instance,uint64_t cycle)
 {
@@ -76,13 +76,13 @@ static void clock_mac(void *instance,uint64_t cycle)
         log_flow(cycle,"MAC","FORWARD","slot=%u N=%u V=%u",c.forward_slot,c.neurons,c.batch);
     }
     if(c.compute_en) {
-        log_flow(cycle,"MAC","COMPUTE","pc=0x%04X slot=%u k=%u active=%u/16 useful_MACs_this_clock=%u",c.pc,c.slot,c.k,c.neurons*c.batch,c.neurons*c.batch);
+        log_flow(cycle,"MAC","COMPUTE","pc=0x%05X slot=%u k=%u active=%u/16 useful_MACs_this_clock=%u",c.pc,c.slot,c.k,c.neurons*c.batch,c.neurons*c.batch);
         for(unsigned r=0;r<c.neurons;r++) for(unsigned v=0;v<c.batch;v++) {
             const OperandSlot *slot=&m->regs.slot[c.slot];
             int x=line_byte(slot->operand[OPERAND_X],v*4+c.k);
             int w=line_byte(slot->operand[OPERAND_W],r*4+c.k);
             int32_t before=(c.k==0&&!c.accumulate)?unpack_i32(slot->operand[OPERAND_B].lane[r]):m->regs.accumulators.value[r][v];
-            log_flow(cycle,"MAC","PE","pc=0x%04X k=%u r=%u v=%u acc=%d x=%d w=%d product=%d prior=%d",
+            log_flow(cycle,"MAC","PE","pc=0x%05X k=%u r=%u v=%u acc=%d x=%d w=%d product=%d prior=%d",
                      c.pc,c.k,r,v,m->products_added.value[r][v],x,w,x*w,before);
         }
         m->regs.accumulators=m->products_added;

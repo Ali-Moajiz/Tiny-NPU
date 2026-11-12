@@ -1,7 +1,0 @@
-{
-  "mode": "float-ptq",
-  "calibration_used": true,
-  "calibration": "examples/calibration.npy",
-  "source_input_dtype": "float32",
-  "source_output_dtype": "float32"
-}

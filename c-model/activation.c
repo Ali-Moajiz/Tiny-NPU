@@ -24,6 +24,6 @@ static void log_ports(void *instance,uint64_t cycle)
         log_tile("out",AccSignal_read(a->ports.out.activated).tile);
         log_line("CFG",AccSignal_read(a->ports.in.sums).config);
     }
-    if(c.post_en) log_flow(cycle,"Activation","POST","pc=0x%04X mode=%s",c.pc,AccSignal_read(a->ports.in.sums).config.lane[2]?"ReLU":"bypass");
+    if(c.post_en) log_flow(cycle,"Activation","POST","pc=0x%05X mode=%s",c.pc,AccSignal_read(a->ports.in.sums).config.lane[2]?"ReLU":"bypass");
 }
 const BlockOps activation_ops={.eval=evaluate,.clock=log_ports};

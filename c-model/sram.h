@@ -30,7 +30,7 @@ typedef struct
     SramPorts ports;
 } Sram;
 
-/* Host initialization only: exactly 1024 MSB-first 128-bit hex words. */
+/* Host initialization only: exactly SRAM_LINES MSB-first 128-bit hex words. */
 bool sram_load_hex(Sram *, const char *path, char *error, size_t error_size);
 extern const BlockOps sram_ops;
 #endif

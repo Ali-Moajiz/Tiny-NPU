@@ -50,7 +50,8 @@ test: $(BIN)
 	$(BUILD)/check_bus
 	$(CC) $(CPPFLAGS) $(CFLAGS) -I. tests/check_core.c $(filter-out main.c tb.c,$(SOURCES)) $(LDFLAGS) -o $(BUILD)/check_core
 	$(BUILD)/check_core
-	python3 tests/check_model.py --binary $(BIN) --post-latency $(POST_LATENCY)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -I. tests/check_image.c sram.c isa.c bus.c logging.c $(LDFLAGS) -o $(BUILD)/check_image
+	python3 tests/check_model.py --binary $(BIN) --post-latency $(POST_LATENCY) --loader-checker $(BUILD)/check_image
 clean:
 	rm -rf build
 -include $(OBJECTS:.o=.d)
