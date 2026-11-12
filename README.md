@@ -248,6 +248,46 @@ width/depth can help. More SRAM does not add new supported operators.
 
 ## Rebuild and test
 
+### Quick end-to-end test
+
+Run from the project root:
+
+```sh
+./quick_test.sh
+```
+
+The script first installs the root `requirements.txt`, including compiler,
+training, and executable-packaging dependencies. It uses the selected Python
+virtual environment, or creates/reuses `.venv/` if the selected Python is outside
+a virtual environment. First-time setup requires network access. You still need
+Python 3.10–3.12 with venv support, Make, and a C compiler installed on the system.
+
+It then trains and exports the test network, rebuilds the compiler executable,
+compiles the ONNX model, builds the C model with `TB=1`, and runs **100 random
+batches**, using batch size 4 and seed 42. Optionally activate your Python
+environment first, or select it with `PYTHON=/path/to/python3`.
+
+All stages' standard output and errors appear in the terminal and are saved in
+**`quick_test.log` in the project root**. Each run replaces that log and regenerates
+the training exports, compiler executable, and `output-large/` compilation files.
+The script stops on failure and returns a nonzero exit status.
+
+Detailed runtime traces are optional:
+
+```sh
+LOG=flow ./quick_test.sh
+```
+
+The default is `LOG=none`; `flow`, `ports`, and `both` can produce large logs.
+This is an execution smoke test; random inputs do not verify numerical accuracy.
+
+**TB status: work in progress.** The current quick-test TB setup is designed
+for a four-input DNN, with one output in this script. Generalizing this setup
+to other input/output dimensions is planned. These script defaults are separate
+from the compiler's supported layer widths and the C runner's feature-count options.
+
+### Rebuild the compiler and run regression tests
+
 Rebuild the executable after editing compiler Python source:
 
 ```sh

@@ -1,0 +1,6 @@
+# Complete Python setup for quick_test.sh, including compiler dependencies.
+-r compiler/requirements.txt
+torch>=2.5,<3
+scikit-learn>=1.3,<2
+pyinstaller==6.16.0
+pyinstaller-hooks-contrib==2025.9

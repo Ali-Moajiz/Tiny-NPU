@@ -15,6 +15,12 @@ tiny_npu
 build/
 bin/
 
+# ---------- Quick-test setup ----------
+# Automatically created environment and complete workflow log.
+.venv/
+/quick_test.log
+# Keep quick_test.sh and root/compiler requirements.txt files trackable.
+
 # ---------- Compiler and model workflow ----------
 # Compiler images, parameters, assembly, manifests and debug reports.
 # Keep file extensions unrestricted so source fixtures can be committed.
@@ -23,7 +29,7 @@ bin/
 /compiled/
 *_compiled/
 
-# Training exports and reference results (also covered by test-dnn/.gitignore).
+# Training exports and reference results, including quick_test.sh outputs.
 /test-dnn/artifacts/
 /test-dnn/compiled/
 /test-dnn/results.json
@@ -67,7 +73,6 @@ Thumbs.db
 # ---------- Python / Jupyter ----------
 __pycache__/
 *.py[cod]
-.venv/
 venv/
 .ipynb_checkpoints/
 .pytest_cache/
