@@ -1,0 +1,1106 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mxfile host="app.diagrams.net" pages="5" modified="2026-11-13T00:00:00.000Z" agent="Tiny NPU architecture specification">
+  <diagram id="axi-ip-current" name="01 — Controller, SRAM and datapath">
+    <mxGraphModel dx="2240" dy="1440" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1560" pageHeight="900" background="#FFFFFF" math="0" shadow="0">
+      <root>
+        <mxCell id="p1_0" />
+        <mxCell id="p1_1" parent="p1_0" />
+        <mxCell id="p1_mac_unit" parent="p1_1" vertex="1" value="&lt;b&gt;MAC ENGINE&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;strokeColor=#333333;fillColor=#FFFFFF;spacing=5;fillColor=none;dashed=1;verticalAlign=top;align=left;spacing=6;">
+          <mxGeometry x="390" y="217" width="565" height="182" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_title" value="&lt;b&gt;Tiny NPU • Programmable controller and 1 MiB shared SRAM&lt;/b&gt;" vertex="1" parent="p1_1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;fontFamily=Helvetica;fontSize=14;align=center;verticalAlign=middle;fontSize=25;align=left;">
+          <mxGeometry x="55" y="35" width="1100" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_boundary" value="SoC slave interface&lt;br&gt;&lt;i&gt;Future integration&lt;/i&gt;" vertex="1" parent="p1_1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;fontFamily=Helvetica;fontSize=14;align=center;verticalAlign=middle;">
+          <mxGeometry x="1195" y="32" width="270" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_ctrl" value="&lt;b&gt;Controller&lt;/b&gt;&lt;br&gt;PC • IR • opcode callbacks&lt;br&gt;Fetch / decode / dispatch" vertex="1" parent="p1_1" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;strokeColor=#333333;fillColor=#FFFFFF;spacing=5;">
+          <mxGeometry x="60" y="265" width="205" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_regs" value="&lt;b&gt;Operand slots 0 / 1&lt;/b&gt;&lt;br&gt;X • W • B • CFG&lt;br&gt;Register sets + loaded bits" vertex="1" parent="p1_mac_unit" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;strokeColor=#333333;fillColor=#FFFFFF;spacing=5;">
+          <mxGeometry x="17" y="48" width="220" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_mac" value="&lt;b&gt;4 × 4 MAC array&lt;/b&gt;&lt;br&gt;16 INT8 multipliers&lt;br&gt;16 INT32 accumulators" vertex="1" parent="p1_mac_unit" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;strokeColor=#333333;fillColor=#FFFFFF;spacing=5;">
+          <mxGeometry x="340" y="48" width="210" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_act" value="&lt;b&gt;Activation&lt;/b&gt;&lt;br&gt;ReLU / bypass" vertex="1" parent="p1_1" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;strokeColor=#333333;fillColor=#FFFFFF;spacing=5;">
+          <mxGeometry x="1040" y="265" width="150" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_scale" value="&lt;b&gt;Scale / clamp&lt;/b&gt;&lt;br&gt;INT64 multiply • round-even&lt;br&gt;INT8 • POST_LATENCY 0 / 1" vertex="1" parent="p1_1" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;strokeColor=#333333;fillColor=#FFFFFF;spacing=5;">
+          <mxGeometry x="1290" y="265" width="185" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_mem" value="&lt;b&gt;SRAM • 65,536 × 128 bits • 1 MiB&lt;/b&gt;&lt;br&gt;Single port • instructions / W / B / CFG / activations&lt;br&gt;Registered read response; held until consumed" vertex="1" parent="p1_1" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;strokeColor=#333333;fillColor=#FFFFFF;spacing=5;">
+          <mxGeometry x="405" y="610" width="500" height="105" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_io" value="&lt;b&gt;Runtime stream&lt;/b&gt;&lt;br&gt;TB input / output endpoint&lt;br&gt;input_pop / output_push" vertex="1" parent="p1_1" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;strokeColor=#333333;fillColor=#FFFFFF;spacing=5;">
+          <mxGeometry x="60" y="610" width="205" height="105" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_ctreg" value="" vertex="1" parent="p1_1" style="ellipse;fillColor=#333333;strokeColor=#333333;">
+          <mxGeometry x="515" y="168" width="4" height="4" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_ctmac" value="" vertex="1" parent="p1_1" style="ellipse;fillColor=#333333;strokeColor=#333333;">
+          <mxGeometry x="833" y="168" width="4" height="4" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_ctact" value="" vertex="1" parent="p1_1" style="ellipse;fillColor=#333333;strokeColor=#333333;">
+          <mxGeometry x="1113" y="168" width="4" height="4" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_ctscale" value="" vertex="1" parent="p1_1" style="ellipse;fillColor=#333333;strokeColor=#333333;">
+          <mxGeometry x="1380.5" y="168" width="4" height="4" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_ctrl_out" source="p1_ctrl" target="p1_ctreg" parent="p1_1" edge="1" style="edgeStyle=none;html=1;rounded=0;jumpStyle=arc;strokeWidth=1;dashed=1;endArrow=none;exitX=0.5;exitY=0;entryX=0;entryY=0.5;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="162.5" y="170" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p1_enable_regs" source="p1_ctreg" target="p1_regs" parent="p1_1" edge="1" style="edgeStyle=none;html=1;rounded=0;jumpStyle=arc;strokeWidth=1;dashed=1;endArrow=classic;exitX=0.5;exitY=1;entryX=0.5;entryY=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_rail_ctmac" source="p1_ctreg" target="p1_ctmac" parent="p1_1" edge="1" style="edgeStyle=none;html=1;rounded=0;jumpStyle=arc;strokeWidth=1;dashed=1;endArrow=none;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_enable_mac" source="p1_ctmac" target="p1_mac" parent="p1_1" edge="1" style="edgeStyle=none;html=1;rounded=0;jumpStyle=arc;strokeWidth=1;dashed=1;endArrow=classic;exitX=0.5;exitY=1;entryX=0.5;entryY=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_rail_ctact" source="p1_ctmac" target="p1_ctact" parent="p1_1" edge="1" style="edgeStyle=none;html=1;rounded=0;jumpStyle=arc;strokeWidth=1;dashed=1;endArrow=none;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_enable_act" source="p1_ctact" target="p1_act" parent="p1_1" edge="1" style="edgeStyle=none;html=1;rounded=0;jumpStyle=arc;strokeWidth=1;dashed=1;endArrow=classic;exitX=0.5;exitY=1;entryX=0.5;entryY=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_rail_ctscale" source="p1_ctact" target="p1_ctscale" parent="p1_1" edge="1" style="edgeStyle=none;html=1;rounded=0;jumpStyle=arc;strokeWidth=1;dashed=1;endArrow=none;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_enable_scale" source="p1_ctscale" target="p1_scale" parent="p1_1" edge="1" style="edgeStyle=none;html=1;rounded=0;jumpStyle=arc;strokeWidth=1;dashed=1;endArrow=classic;exitX=0.5;exitY=1;entryX=0.5;entryY=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_ctrl_lbl" value="Control bus • rd/wr • latch slot/field • compute/k • post • forward • stream handshakes" vertex="1" parent="p1_1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;fontFamily=Helvetica;fontSize=14;align=center;verticalAlign=middle;">
+          <mxGeometry x="410" y="122" width="800" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_regs_mac" source="p1_regs" target="p1_mac" parent="p1_1" edge="1" style="edgeStyle=none;html=1;rounded=0;jumpStyle=arc;strokeWidth=2;dashed=0;endArrow=classic;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_lbl_regs" value="INT8 lanes" vertex="1" parent="p1_1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;fontFamily=Helvetica;fontSize=14;align=center;verticalAlign=middle;fontSize=12;">
+          <mxGeometry x="629" y="283" width="98" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_mac_act" source="p1_mac" target="p1_act" parent="p1_1" edge="1" style="edgeStyle=none;html=1;rounded=0;jumpStyle=arc;strokeWidth=2;dashed=0;endArrow=classic;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_lbl_mac" value="16 × INT32&lt;br&gt;+ CFG / qualifiers" vertex="1" parent="p1_1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;fontFamily=Helvetica;fontSize=14;align=center;verticalAlign=middle;fontSize=12;">
+          <mxGeometry x="955" y="272" width="85" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_act_scale" source="p1_act" target="p1_scale" parent="p1_1" edge="1" style="edgeStyle=none;html=1;rounded=0;jumpStyle=arc;strokeWidth=2;dashed=0;endArrow=classic;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_lbl_act" value="16 × INT32&lt;br&gt;+ CFG / qualifiers" vertex="1" parent="p1_1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;fontFamily=Helvetica;fontSize=14;align=center;verticalAlign=middle;fontSize=12;">
+          <mxGeometry x="1190" y="272" width="100" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_rdtap" value="" vertex="1" parent="p1_1" style="ellipse;fillColor=#333333;strokeColor=#333333;">
+          <mxGeometry x="515" y="460" width="4" height="4" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_mem_read" source="p1_mem" target="p1_rdtap" parent="p1_1" edge="1" style="edgeStyle=none;html=1;rounded=0;jumpStyle=arc;strokeWidth=2;dashed=0;endArrow=none;exitX=0.224;exitY=0;entryX=0.5;entryY=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_latch_operands" source="p1_rdtap" target="p1_regs" parent="p1_1" edge="1" style="edgeStyle=none;html=1;rounded=0;jumpStyle=arc;strokeWidth=2;dashed=0;endArrow=classic;exitX=0.5;exitY=0;entryX=0.5;entryY=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_latch_ir" source="p1_rdtap" target="p1_ctrl" parent="p1_1" edge="1" style="edgeStyle=none;html=1;rounded=0;jumpStyle=arc;strokeWidth=2;dashed=0;endArrow=classic;exitX=0;exitY=0.5;entryX=0.8;entryY=1;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="224" y="462" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p1_rd_lbl" value="SRAM response • 128-bit tile + valid" vertex="1" parent="p1_1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;fontFamily=Helvetica;fontSize=14;align=center;verticalAlign=middle;fontSize=13;">
+          <mxGeometry x="228" y="469" width="285" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_address" source="p1_ctrl" target="p1_mem" parent="p1_1" edge="1" style="edgeStyle=none;html=1;rounded=0;jumpStyle=arc;strokeWidth=1;dashed=1;endArrow=classic;exitX=0.15;exitY=1;entryX=0.06;entryY=0;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="90.75" y="550" />
+              <mxPoint x="435" y="550" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p1_address_lbl" value="32-bit byte address • SRAM index = address[19:4]&lt;br&gt;rd_en / wr_en • byte_enable[15:0]" vertex="1" parent="p1_1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;fontFamily=Helvetica;fontSize=14;align=center;verticalAlign=middle;fontSize=13;">
+          <mxGeometry x="105" y="499" width="355" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_hidden" source="p1_scale" target="p1_regs" parent="p1_1" edge="1" style="edgeStyle=none;html=1;rounded=0;jumpStyle=arc;strokeWidth=2;dashed=0;endArrow=classic;exitX=0.4;exitY=1;entryX=0.85;entryY=1;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1364" y="435" />
+              <mxPoint x="594" y="435" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p1_hidden_lbl" value="Hidden forward • 128-bit INT8 tile" vertex="1" parent="p1_1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;fontFamily=Helvetica;fontSize=14;align=center;verticalAlign=middle;">
+          <mxGeometry x="796" y="445" width="400" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_writeback" source="p1_scale" target="p1_mem" parent="p1_1" edge="1" style="edgeStyle=none;html=1;rounded=0;jumpStyle=arc;strokeWidth=2;dashed=0;endArrow=classic;exitX=0.85;exitY=1;entryX=1;entryY=0.5;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1447.25" y="662.5" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p1_write_lbl" value="Result writeback • WDATA[127:0]" vertex="1" parent="p1_1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;fontFamily=Helvetica;fontSize=14;align=center;verticalAlign=middle;">
+          <mxGeometry x="950" y="625" width="425" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_in" source="p1_io" target="p1_mem" parent="p1_1" edge="1" style="edgeStyle=none;html=1;rounded=0;jumpStyle=arc;strokeWidth=2;dashed=0;endArrow=classic;exitX=1;exitY=0.33;entryX=0;entryY=0.33;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_out" source="p1_mem" target="p1_io" parent="p1_1" edge="1" style="edgeStyle=none;html=1;rounded=0;jumpStyle=arc;strokeWidth=2;dashed=0;endArrow=classic;exitX=0;exitY=0.76;entryX=1;entryY=0.76;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_in_lbl" value="Input • 128-bit" vertex="1" parent="p1_1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;fontFamily=Helvetica;fontSize=14;align=center;verticalAlign=middle;fontSize=13;">
+          <mxGeometry x="268" y="611" width="136" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_out_lbl" value="Output • 128-bit" vertex="1" parent="p1_1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;fontFamily=Helvetica;fontSize=14;align=center;verticalAlign=middle;fontSize=13;">
+          <mxGeometry x="268" y="691" width="136" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_notes" value="&lt;b&gt;Current execution contract&lt;/b&gt;&lt;br&gt;One SRAM access per edge. Instruction fetch and operand access share this port. Control pulses qualify every capture and transfer.&lt;br&gt;Sequential instruction issue: two slots exist, but loads do not overlap compute. Partial sums persist across reduction tiles. Scaled results may forward to X or store to SRAM." vertex="1" parent="p1_1" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;strokeColor=#333333;fillColor=#FFFFFF;spacing=5;align=left;fillColor=#F1F5FF;strokeColor=#CBD5E1;spacing=12;">
+          <mxGeometry x="60" y="765" width="1415" height="95" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_stream_control" source="p1_ctrl" target="p1_io" parent="p1_1" edge="1" style="edgeStyle=none;html=1;rounded=0;jumpStyle=arc;jumpSize=8;strokeColor=#333333;strokeWidth=1;dashed=1;endArrow=classic;exitX=0.0634;exitY=1;entryX=0.0634;entryY=0;fontFamily=Helvetica;fontSize=14;labelBackgroundColor=#FFFFFF;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="73" y="480" />
+              <mxPoint x="73" y="590" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p1_stream_status" source="p1_io" target="p1_ctrl" parent="p1_1" edge="1" style="edgeStyle=none;html=1;rounded=0;jumpStyle=arc;jumpSize=8;strokeColor=#333333;strokeWidth=1;dashed=1;endArrow=classic;exitX=0;exitY=0.5;entryX=0;entryY=0.5;fontFamily=Helvetica;fontSize=14;labelBackgroundColor=#FFFFFF;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="40" y="662.5" />
+              <mxPoint x="40" y="320" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p1_stream_status_note" value="Stream status: input_valid / output_ready" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;fontFamily=Helvetica;fontSize=15;align=left;verticalAlign=middle;fontSize=12;" vertex="1" parent="p1_1">
+          <mxGeometry x="105" y="572" width="290" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_write_mux_note" value="SRAM write-data select:&lt;br&gt;WRITE_STREAM / WRITE_RESULT" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;fontFamily=Helvetica;fontSize=15;align=left;verticalAlign=middle;fontSize=14;" vertex="1" parent="p1_1">
+          <mxGeometry x="960" y="695" width="430" height="44" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="axi-ip-isa" name="02 — ISA and controller contract">
+    <mxGraphModel dx="2240" dy="1440" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1800" pageHeight="1320" background="#FFFFFF" math="0" shadow="0">
+      <root>
+        <mxCell id="p2_0" />
+        <mxCell id="p2_1" parent="p2_0" />
+        <mxCell id="p2_isa_title" value="&lt;b&gt;128-bit ISA • programmable controller&lt;/b&gt;" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;fontColor=#111111;fontFamily=Helvetica;fontSize=15;align=left;verticalAlign=middle;fontSize=25;" vertex="1" parent="p2_1">
+          <mxGeometry x="60" y="30" width="1600" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="p2_field0" value="&lt;b&gt;[127:124] • 4 bits&lt;/b&gt;&lt;br&gt;Opcode" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontColor=#111111;fontFamily=Helvetica;fontSize=15;spacing=10;" vertex="1" parent="p2_1">
+          <mxGeometry x="60" y="125" width="160" height="95" as="geometry" />
+        </mxCell>
+        <mxCell id="p2_field1" value="&lt;b&gt;[123:92] • 32 bits&lt;/b&gt;&lt;br&gt;SRAM source byte address / loop count" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontColor=#111111;fontFamily=Helvetica;fontSize=15;spacing=10;" vertex="1" parent="p2_1">
+          <mxGeometry x="220" y="125" width="380" height="95" as="geometry" />
+        </mxCell>
+        <mxCell id="p2_field2" value="&lt;b&gt;[91:60] • 32 bits&lt;/b&gt;&lt;br&gt;Destination byte address / slot-field / loop target" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontColor=#111111;fontFamily=Helvetica;fontSize=15;spacing=10;" vertex="1" parent="p2_1">
+          <mxGeometry x="600" y="125" width="380" height="95" as="geometry" />
+        </mxCell>
+        <mxCell id="p2_field3" value="&lt;b&gt;[59:32] • 28 bits&lt;/b&gt;&lt;br&gt;N[3:0], batch[7:4], K[11:8]&lt;br&gt;Load/store: dims = 16 bytes" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontColor=#111111;fontFamily=Helvetica;fontSize=15;spacing=10;" vertex="1" parent="p2_1">
+          <mxGeometry x="980" y="125" width="350" height="95" as="geometry" />
+        </mxCell>
+        <mxCell id="p2_field4" value="&lt;b&gt;[31:0] • 32 bits&lt;/b&gt;&lt;br&gt;EXEC: slot bit 0 / retain bit 1&lt;br&gt;POST: slot bit 0 / store bit 2" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontColor=#111111;fontFamily=Helvetica;fontSize=15;spacing=10;" vertex="1" parent="p2_1">
+          <mxGeometry x="1330" y="125" width="350" height="95" as="geometry" />
+        </mxCell>
+        <mxCell id="p2_ophead" value="&lt;b&gt;Opcode&lt;/b&gt;                       &lt;b&gt;Operation&lt;/b&gt;                                   &lt;b&gt;Effect / operands&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontColor=#111111;fontFamily=Helvetica;fontSize=15;spacing=10;fillColor=#F1F5FF;strokeColor=#CBD5E1;align=left;verticalAlign=top;" vertex="1" parent="p2_1">
+          <mxGeometry x="60" y="250" width="1620" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p2_op0" value="&lt;b&gt;0x1  OP_STREAM_LOAD&lt;/b&gt;&lt;br&gt;One runtime input beat → SRAM[DEST]. SRC=0, dims=16, flags=0. Wait for input_valid; assert input_pop with the write." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontColor=#111111;fontFamily=Helvetica;fontSize=15;spacing=10;align=left;" vertex="1" parent="p2_1">
+          <mxGeometry x="60" y="300" width="1620" height="66" as="geometry" />
+        </mxCell>
+        <mxCell id="p2_op1" value="&lt;b&gt;0x2  OP_EXEC_MAC&lt;/b&gt;&lt;br&gt;Update N × batch independent PEs for K clocks. Slot = flags[0]; accumulate = flags[1]. Missing operands are a model fault." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontColor=#111111;fontFamily=Helvetica;fontSize=15;spacing=10;align=left;" vertex="1" parent="p2_1">
+          <mxGeometry x="60" y="372" width="1620" height="66" as="geometry" />
+        </mxCell>
+        <mxCell id="p2_op2" value="&lt;b&gt;0x3  OP_POST_PROC&lt;/b&gt;&lt;br&gt;Completed sums → ReLU/bypass → scale/round/clamp. Optional store uses DEST; 1 + POST_LATENCY dispatch clocks." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontColor=#111111;fontFamily=Helvetica;fontSize=15;spacing=10;align=left;" vertex="1" parent="p2_1">
+          <mxGeometry x="60" y="444" width="1620" height="66" as="geometry" />
+        </mxCell>
+        <mxCell id="p2_op3" value="&lt;b&gt;0x4  OP_FORWARD&lt;/b&gt;&lt;br&gt;Completed result → X of slot DEST (0 or 1). Matching N / batch required. SRC=0, flags=0; no SRAM access." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontColor=#111111;fontFamily=Helvetica;fontSize=15;spacing=10;align=left;" vertex="1" parent="p2_1">
+          <mxGeometry x="60" y="516" width="1620" height="66" as="geometry" />
+        </mxCell>
+        <mxCell id="p2_op4" value="&lt;b&gt;0x5  OP_STREAM_STORE&lt;/b&gt;&lt;br&gt;Read one beat from SRAM[SRC] → runtime output. DEST=0, dims=16, flags=0. Hold response until output_ready." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontColor=#111111;fontFamily=Helvetica;fontSize=15;spacing=10;align=left;" vertex="1" parent="p2_1">
+          <mxGeometry x="60" y="588" width="1620" height="66" as="geometry" />
+        </mxCell>
+        <mxCell id="p2_op5" value="&lt;b&gt;0x6  OP_LOOP_START&lt;/b&gt;&lt;br&gt;SRC = positive loop count; DEST = PC + 16. One non-nested loop context; dims=0, flags=0." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontColor=#111111;fontFamily=Helvetica;fontSize=15;spacing=10;align=left;" vertex="1" parent="p2_1">
+          <mxGeometry x="60" y="660" width="1620" height="66" as="geometry" />
+        </mxCell>
+        <mxCell id="p2_op6" value="&lt;b&gt;0x7  OP_LOOP_END&lt;/b&gt;&lt;br&gt;DEST must match active loop body. Decrement count; branch while nonzero. SRC=0, dims=0, flags=0." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontColor=#111111;fontFamily=Helvetica;fontSize=15;spacing=10;align=left;" vertex="1" parent="p2_1">
+          <mxGeometry x="60" y="732" width="1620" height="66" as="geometry" />
+        </mxCell>
+        <mxCell id="p2_op7" value="&lt;b&gt;0xF  OP_HALT&lt;/b&gt;&lt;br&gt;Set controller.regs.done at retirement; all other fields zero. HALT inside an active loop faults. No implemented IRQ signal." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontColor=#111111;fontFamily=Helvetica;fontSize=15;spacing=10;align=left;" vertex="1" parent="p2_1">
+          <mxGeometry x="60" y="804" width="1620" height="66" as="geometry" />
+        </mxCell>
+        <mxCell id="p2_s0" value="&lt;b&gt;CTRL_FETCH → CTRL_RESPONSE&lt;/b&gt;&lt;br&gt;Request SRAM[pc]; capture regs.ir&lt;br&gt;Two cycles at normal read latency" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontColor=#111111;fontFamily=Helvetica;fontSize=15;spacing=10;" vertex="1" parent="p2_1">
+          <mxGeometry x="60" y="965" width="330" height="95" as="geometry" />
+        </mxCell>
+        <mxCell id="p2_s1" value="&lt;b&gt;CTRL_DECODE&lt;/b&gt;&lt;br&gt;instruction_decode(ir)&lt;br&gt;handlers[opcode] → validate()" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontColor=#111111;fontFamily=Helvetica;fontSize=15;spacing=10;" vertex="1" parent="p2_1">
+          <mxGeometry x="490" y="965" width="330" height="95" as="geometry" />
+        </mxCell>
+        <mxCell id="p2_s2" value="&lt;b&gt;CTRL_DISPATCH&lt;/b&gt;&lt;br&gt;active_handler-&gt;execute()&lt;br&gt;PROGRESS / WAIT / DONE / FAULT" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontColor=#111111;fontFamily=Helvetica;fontSize=15;spacing=10;" vertex="1" parent="p2_1">
+          <mxGeometry x="920" y="965" width="330" height="95" as="geometry" />
+        </mxCell>
+        <mxCell id="p2_s3" value="&lt;b&gt;CTRL_UPDATE&lt;/b&gt;&lt;br&gt;Optional retire() callback&lt;br&gt;PC + 16 / loop branch / done" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontColor=#111111;fontFamily=Helvetica;fontSize=15;spacing=10;" vertex="1" parent="p2_1">
+          <mxGeometry x="1350" y="965" width="330" height="95" as="geometry" />
+        </mxCell>
+        <mxCell id="p2_state0" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;endFill=1;strokeColor=#333333;fontColor=#111111;fontFamily=Helvetica;fontSize=13;labelBackgroundColor=#FFFFFF;jumpStyle=arc;jumpSize=8;exitX=1;exitY=0.5;entryX=0;entryY=0.5;strokeWidth=2;" edge="1" parent="p2_1" source="p2_s0" target="p2_s1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p2_state1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;endFill=1;strokeColor=#333333;fontColor=#111111;fontFamily=Helvetica;fontSize=13;labelBackgroundColor=#FFFFFF;jumpStyle=arc;jumpSize=8;exitX=1;exitY=0.5;entryX=0;entryY=0.5;strokeWidth=2;" edge="1" parent="p2_1" source="p2_s1" target="p2_s2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p2_state2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;endFill=1;strokeColor=#333333;fontColor=#111111;fontFamily=Helvetica;fontSize=13;labelBackgroundColor=#FFFFFF;jumpStyle=arc;jumpSize=8;exitX=1;exitY=0.5;entryX=0;entryY=0.5;strokeWidth=2;" edge="1" parent="p2_1" source="p2_s2" target="p2_s3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p2_loopstate" value="next instruction" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;endFill=1;strokeColor=#333333;fontColor=#111111;fontFamily=Helvetica;fontSize=13;labelBackgroundColor=#FFFFFF;jumpStyle=arc;jumpSize=8;exitX=0.5;exitY=1;entryX=0.5;entryY=1;strokeWidth=2;" edge="1" parent="p2_1" source="p2_s3" target="p2_s0">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1515" y="1090" />
+              <mxPoint x="225" y="1090" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p2_isa_notes" value="&lt;b&gt;Execution conventions • callbacks in instructions.c&lt;/b&gt;&lt;br&gt;Each instruction adds four lifecycle clocks: fetch, response, decode, update. Dispatch: LOAD_OPERAND=2; EXEC_MAC=K; POST_PROC=1+POST_LATENCY; STREAM_STORE=2; others=1 (without stalls).&lt;br&gt;At k=0, accumulate=false seeds bias; accumulate=true retains a live tile. Apply POST only after the full reduction.&lt;br&gt;Extra waiting increments bus_stall_cycles. Instructions execute sequentially; two operand slots alone do not create overlap.&lt;br&gt;The opcode registry and file I/O are C-model mechanisms. RTL needs an equivalent static decoder and physical interfaces." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontColor=#111111;fontFamily=Helvetica;fontSize=15;spacing=10;fillColor=#F1F5FF;strokeColor=#CBD5E1;align=left;verticalAlign=top;" vertex="1" parent="p2_1">
+          <mxGeometry x="60" y="1140" width="1620" height="165" as="geometry" />
+        </mxCell>
+        <mxCell id="p2_op_load" parent="p2_1" vertex="1" value="&lt;b&gt;0x8  OP_LOAD_OPERAND&lt;/b&gt;&lt;br&gt;One SRAM beat → MAC slot. SRC = aligned byte address; DEST = (slot &lt;&lt; 2) | field. X=0, W=1, B=2, CFG=3; dims=16, flags=0." style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;strokeColor=#333333;fillColor=#FFFFFF;spacing=5;align=left;">
+          <mxGeometry x="60" y="876" width="1620" height="66" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="axi-ip-compiler" name="03 — Compiler and execution flow">
+    <mxGraphModel dx="2240" dy="1440" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1800" pageHeight="1400" background="#FFFFFF" math="0" shadow="0">
+      <root>
+        <mxCell id="p3_0" />
+        <mxCell id="p3_1" parent="p3_0" />
+        <mxCell id="p3_compiler_title" value="&lt;b&gt;Compiler pipeline and runtime scheduling&lt;/b&gt;" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;fontColor=#111111;fontFamily=Helvetica;fontSize=15;align=left;verticalAlign=middle;fontSize=25;" vertex="1" parent="p3_1">
+          <mxGeometry x="60" y="30" width="1620" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="p3_model" value="&lt;b&gt;PyTorch / ONNX model&lt;/b&gt;&lt;br&gt;Graph, tensors, calibration data" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontColor=#111111;fontFamily=Helvetica;fontSize=15;spacing=10;" vertex="1" parent="p3_1">
+          <mxGeometry x="60" y="135" width="390" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="p3_parse" value="&lt;b&gt;A • Graph parser + quantization&lt;/b&gt;&lt;br&gt;INT8 operands / INT32 accumulator-unit bias&lt;br&gt;Float model: representative calibration&lt;br&gt;Compatible Q/DQ model: imported quantization" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontColor=#111111;fontFamily=Helvetica;fontSize=15;spacing=10;" vertex="1" parent="p3_1">
+          <mxGeometry x="60" y="320" width="390" height="145" as="geometry" />
+        </mxCell>
+        <mxCell id="p3_tile" value="&lt;b&gt;B • Tiling and memory layout&lt;/b&gt;&lt;br&gt;Map ≤ 4 neurons × ≤ 4 independent vectors&lt;br&gt;Split reduction into k-steps&lt;br&gt;Assign non-overlapping regions in shared SRAM" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontColor=#111111;fontFamily=Helvetica;fontSize=15;spacing=10;" vertex="1" parent="p3_1">
+          <mxGeometry x="620" y="320" width="490" height="145" as="geometry" />
+        </mxCell>
+        <mxCell id="p3_emit" value="&lt;b&gt;C • Instruction stream emitter&lt;/b&gt;&lt;br&gt;Assign byte addresses in the 1 MiB map&lt;br&gt;Emit dependency-ordered tile operations&lt;br&gt;Encode instructions as 128-bit words" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontColor=#111111;fontFamily=Helvetica;fontSize=15;spacing=10;" vertex="1" parent="p3_1">
+          <mxGeometry x="1280" y="320" width="400" height="145" as="geometry" />
+        </mxCell>
+        <mxCell id="p3_binary" value="&lt;b&gt;program.bin / program.hex&lt;/b&gt;&lt;br&gt;Instruction words only&lt;br&gt;Image location: byte address 0xF1000" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontColor=#111111;fontFamily=Helvetica;fontSize=15;spacing=10;" vertex="1" parent="p3_1">
+          <mxGeometry x="1150" y="640" width="360" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="p3_blob" value="&lt;b&gt;Weight / bias / configuration&lt;/b&gt;&lt;br&gt;Compiler packs tiles and M / S / ReLU&lt;br&gt;Included in the complete sram.bin / sram.hex" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontColor=#111111;fontFamily=Helvetica;fontSize=15;spacing=10;" vertex="1" parent="p3_1">
+          <mxGeometry x="620" y="640" width="400" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="p3_runtime" value="&lt;b&gt;Runtime features&lt;/b&gt;&lt;br&gt;TB / host supplies quantized INT8 beats&lt;br&gt;Stream endpoint → STREAM_LOAD → SRAM" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontColor=#111111;fontFamily=Helvetica;fontSize=15;spacing=10;" vertex="1" parent="p3_1">
+          <mxGeometry x="60" y="640" width="390" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="p3_sequence" value="&lt;b&gt;Dependency-ordered execution&lt;/b&gt;&lt;br&gt;&lt;br&gt;OP_STREAM_LOAD • input beat → SRAM&lt;br&gt;OP_LOAD_OPERAND • B / CFG / W / X → selected slot&lt;br&gt;OP_EXEC_MAC • K compute edges; seed bias or retain sums&lt;br&gt;… load more W / X and EXEC_MAC with accumulate=true …&lt;br&gt;OP_POST_PROC • only after the final reduction tile&lt;br&gt;OP_FORWARD • optional completed result → next slot.X&lt;br&gt;… next layer compute …&lt;br&gt;OP_STREAM_STORE • SRAM result → runtime output&lt;br&gt;OP_HALT • set done at retirement" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontColor=#111111;fontFamily=Helvetica;fontSize=15;spacing=10;fillColor=#F1F5FF;strokeColor=#CBD5E1;align=left;verticalAlign=top;" vertex="1" parent="p3_1">
+          <mxGeometry x="620" y="900" width="1060" height="300" as="geometry" />
+        </mxCell>
+        <mxCell id="p3_ownership" value="&lt;b&gt;Scheduling contract&lt;/b&gt;&lt;br&gt;&lt;br&gt;One shared SRAM access per edge.&lt;br&gt;Each instruction is fetched from SRAM.&lt;br&gt;Callbacks emit control; operand data bypasses the controller.&lt;br&gt;Loaded flags qualify operands; missing operands fault.&lt;br&gt;Preserve partial sums across reduction tiles.&lt;br&gt;Forward a complete supported hidden tile or store to SRAM.&lt;br&gt;No automatic load/compute overlap in this model." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontColor=#111111;fontFamily=Helvetica;fontSize=15;spacing=10;fillColor=#F1F5FF;strokeColor=#CBD5E1;align=left;verticalAlign=top;" vertex="1" parent="p3_1">
+          <mxGeometry x="60" y="900" width="390" height="300" as="geometry" />
+        </mxCell>
+        <mxCell id="p3_m_parse" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;endFill=1;strokeColor=#333333;fontColor=#111111;fontFamily=Helvetica;fontSize=13;labelBackgroundColor=#FFFFFF;jumpStyle=arc;jumpSize=8;exitX=0.5;exitY=1;entryX=0.5;entryY=0;strokeWidth=2;" edge="1" parent="p3_1" source="p3_model" target="p3_parse">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p3_parse_tile" value="quantized graph" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;endFill=1;strokeColor=#333333;fontColor=#111111;fontFamily=Helvetica;fontSize=13;labelBackgroundColor=#FFFFFF;jumpStyle=arc;jumpSize=8;exitX=1;exitY=0.5;entryX=0;entryY=0.5;strokeWidth=2;" edge="1" parent="p3_1" source="p3_parse" target="p3_tile">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p3_tile_emit" value="tile schedule" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;endFill=1;strokeColor=#333333;fontColor=#111111;fontFamily=Helvetica;fontSize=13;labelBackgroundColor=#FFFFFF;jumpStyle=arc;jumpSize=8;exitX=1;exitY=0.5;entryX=0;entryY=0.5;strokeWidth=2;" edge="1" parent="p3_1" source="p3_tile" target="p3_emit">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p3_tile_blob" value="static model data" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;endFill=1;strokeColor=#333333;fontColor=#111111;fontFamily=Helvetica;fontSize=13;labelBackgroundColor=#FFFFFF;jumpStyle=arc;jumpSize=8;exitX=0.5;exitY=1;entryX=0.5;entryY=0;strokeWidth=2;" edge="1" parent="p3_1" source="p3_tile" target="p3_blob">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p3_emit_bin" value="128-bit words" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;endFill=1;strokeColor=#333333;fontColor=#111111;fontFamily=Helvetica;fontSize=13;labelBackgroundColor=#FFFFFF;jumpStyle=arc;jumpSize=8;exitX=0.5;exitY=1;entryX=0.5;entryY=0;strokeWidth=2;" edge="1" parent="p3_1" source="p3_emit" target="p3_binary">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p3_bin_run" value="controller program" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;endFill=1;strokeColor=#333333;fontColor=#111111;fontFamily=Helvetica;fontSize=13;labelBackgroundColor=#FFFFFF;jumpStyle=arc;jumpSize=8;exitX=0.5;exitY=1;entryX=0.7;entryY=0;strokeWidth=2;" edge="1" parent="p3_1" source="p3_binary" target="p3_sequence">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p3_runtime_seq" value="dynamic input tokens" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;endFill=1;strokeColor=#333333;fontColor=#111111;fontFamily=Helvetica;fontSize=13;labelBackgroundColor=#FFFFFF;jumpStyle=arc;jumpSize=8;exitX=1;exitY=0.5;entryX=0.15;entryY=0;strokeWidth=2;" edge="1" parent="p3_1" source="p3_runtime" target="p3_sequence">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="500" y="695" />
+              <mxPoint x="500" y="840" />
+              <mxPoint x="770" y="840" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p3_compile_note" value="&lt;b&gt;Image loading&lt;/b&gt;&lt;br&gt;sram.bin is exactly 1 MiB. sram.hex contains 65,536 data words; each 32-digit line represents one 128-bit SRAM word.&lt;br&gt;sram_load_hex() preloads the memory array before cycles begin. Runtime inputs arrive separately. The SoC slave interface remains a future boundary label." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;fontColor=#111111;fontFamily=Helvetica;fontSize=15;spacing=10;fillColor=#F1F5FF;strokeColor=#CBD5E1;align=left;verticalAlign=top;" vertex="1" parent="p3_1">
+          <mxGeometry x="60" y="1260" width="1620" height="105" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="regs_map" name="04 — Registers and address map">
+    <mxGraphModel page="1" pageWidth="1800" pageHeight="1350" grid="1">
+      <root>
+        <mxCell id="p4_0" />
+        <mxCell id="p4_1" parent="p4_0" />
+        <mxCell id="p4_ref_title" parent="p4_1" vertex="1" value="&lt;b&gt;Block registers and 1 MiB SRAM address map&lt;/b&gt;" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;fontFamily=Helvetica;fontSize=14;align=center;verticalAlign=middle;fontSize=24;align=left;">
+          <mxGeometry x="60" y="30" width="1650" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="p4_reg0" parent="p4_1" vertex="1" value="&lt;b&gt;Controller&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;strokeColor=#333333;fillColor=#FFFFFF;spacing=5;align=left;">
+          <mxGeometry x="60" y="105" width="335" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="p4_info0" parent="p4_1" vertex="1" value="regs.pc / next_pc, ir, instruction, state, step; loop_active / loop_remaining / loop_pc; done. handlers[16] selects an InstructionHandler callback." style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;strokeColor=#333333;fillColor=#FFFFFF;spacing=5;align=left;">
+          <mxGeometry x="395" y="105" width="1345" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="p4_reg1" parent="p4_1" vertex="1" value="&lt;b&gt;SRAM interface&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;strokeColor=#333333;fillColor=#FFFFFF;spacing=5;align=left;">
+          <mxGeometry x="60" y="167" width="335" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="p4_info1" parent="p4_1" vertex="1" value="regs.memory[SRAM_LINES] and regs.response {tile, valid}. rd_addr / wr_addr are 32-bit byte addresses; physical index [19:4]. Response held until read_consume." style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;strokeColor=#333333;fillColor=#FFFFFF;spacing=5;align=left;">
+          <mxGeometry x="395" y="167" width="1345" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="p4_reg2" parent="p4_1" vertex="1" value="&lt;b&gt;MAC operand storage&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;strokeColor=#333333;fillColor=#FFFFFF;spacing=5;align=left;">
+          <mxGeometry x="60" y="229" width="335" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="p4_info2" parent="p4_1" vertex="1" value="regs.slot[2].operand[4] and loaded[4]. Fields X / W / B / CFG are each 128 bits. Two slots = 128 payload bytes; no autonomous background loading." style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;strokeColor=#333333;fillColor=#FFFFFF;spacing=5;align=left;">
+          <mxGeometry x="395" y="229" width="1345" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="p4_reg3" parent="p4_1" vertex="1" value="&lt;b&gt;MAC execution&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;strokeColor=#333333;fillColor=#FFFFFF;spacing=5;align=left;">
+          <mxGeometry x="60" y="291" width="335" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="p4_info3" parent="p4_1" vertex="1" value="regs.accumulators.value[4][4] (16 × INT32), valid, complete, neurons, batch, next_k. compute_cycles and useful_macs are 64-bit counters." style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;strokeColor=#333333;fillColor=#FFFFFF;spacing=5;align=left;">
+          <mxGeometry x="395" y="291" width="1345" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="p4_reg4" parent="p4_1" vertex="1" value="&lt;b&gt;Activation / scale&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;strokeColor=#333333;fillColor=#FFFFFF;spacing=5;align=left;">
+          <mxGeometry x="60" y="353" width="335" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="p4_info4" parent="p4_1" vertex="1" value="Activation has ports only (combinational). ScaleClamp has regs.result {tile, valid, neurons, batch}; POST_LATENCY selects 0 or 1 clock output timing." style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;strokeColor=#333333;fillColor=#FFFFFF;spacing=5;align=left;">
+          <mxGeometry x="395" y="353" width="1345" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="p4_reg5" parent="p4_1" vertex="1" value="&lt;b&gt;Runtime I/O&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;strokeColor=#333333;fillColor=#FFFFFF;spacing=5;align=left;">
+          <mxGeometry x="60" y="415" width="335" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="p4_info5" parent="p4_1" vertex="1" value="Stream simulation endpoint: input[256], output[256], input_count / input_index / output_count; output_enabled and availability-cycle controls." style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;strokeColor=#333333;fillColor=#FFFFFF;spacing=5;align=left;">
+          <mxGeometry x="395" y="415" width="1345" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="p4_reg6" parent="p4_1" vertex="1" value="&lt;b&gt;Status / metrics&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;strokeColor=#333333;fillColor=#FFFFFF;spacing=5;align=left;">
+          <mxGeometry x="60" y="477" width="335" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="p4_info6" parent="p4_1" vertex="1" value="Controller regs.cycles / instructions / bus_stall_cycles; SRAM reads / writes; MAC useful_macs / compute_cycles. Npu owns cycle / error. No MMIO CSR or IRQ implemented." style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;strokeColor=#333333;fillColor=#FFFFFF;spacing=5;align=left;">
+          <mxGeometry x="395" y="477" width="1345" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="p4_addr0" parent="p4_1" vertex="1" value="0x00000–0xBFFFF" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;strokeColor=#333333;fillColor=#FFFFFF;spacing=5;align=left;">
+          <mxGeometry x="60" y="585" width="335" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="p4_use0" parent="p4_1" vertex="1" value="Weights • 768 KiB" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;strokeColor=#333333;fillColor=#FFFFFF;spacing=5;align=left;">
+          <mxGeometry x="395" y="585" width="1345" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="p4_addr1" parent="p4_1" vertex="1" value="0xC0000–0xDFFFF" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;strokeColor=#333333;fillColor=#FFFFFF;spacing=5;align=left;">
+          <mxGeometry x="60" y="644" width="335" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="p4_use1" parent="p4_1" vertex="1" value="Activations and results • 128 KiB" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;strokeColor=#333333;fillColor=#FFFFFF;spacing=5;align=left;">
+          <mxGeometry x="395" y="644" width="1345" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="p4_addr2" parent="p4_1" vertex="1" value="0xE0000–0xEFFFF" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;strokeColor=#333333;fillColor=#FFFFFF;spacing=5;align=left;">
+          <mxGeometry x="60" y="703" width="335" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="p4_use2" parent="p4_1" vertex="1" value="Biases • 64 KiB" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;strokeColor=#333333;fillColor=#FFFFFF;spacing=5;align=left;">
+          <mxGeometry x="395" y="703" width="1345" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="p4_addr3" parent="p4_1" vertex="1" value="0xF0000–0xF0FFF" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;strokeColor=#333333;fillColor=#FFFFFF;spacing=5;align=left;">
+          <mxGeometry x="60" y="762" width="335" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="p4_use3" parent="p4_1" vertex="1" value="Layer configuration • 4 KiB" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;strokeColor=#333333;fillColor=#FFFFFF;spacing=5;align=left;">
+          <mxGeometry x="395" y="762" width="1345" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="p4_addr4" parent="p4_1" vertex="1" value="0xF1000–0xFFFFF" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;strokeColor=#333333;fillColor=#FFFFFF;spacing=5;align=left;">
+          <mxGeometry x="60" y="821" width="335" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="p4_use4" parent="p4_1" vertex="1" value="Program • 60 KiB / 3,840 instructions • ENTRY_PC=0xF1000" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;strokeColor=#333333;fillColor=#FFFFFF;spacing=5;align=left;">
+          <mxGeometry x="395" y="821" width="1345" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="p4_addr5" parent="p4_1" vertex="1" value="CFG word • 128 bits" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;strokeColor=#333333;fillColor=#FFFFFF;spacing=5;align=left;">
+          <mxGeometry x="60" y="880" width="335" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="p4_use5" parent="p4_1" vertex="1" value="lane[0]=M (positive INT32); lane[1]=S (0..62); lane[2]=ReLU (0/1); lane[3]=0." style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;strokeColor=#333333;fillColor=#FFFFFF;spacing=5;align=left;">
+          <mxGeometry x="395" y="880" width="1345" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="p4_addr6" parent="p4_1" vertex="1" value="Control/status registers" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;strokeColor=#333333;fillColor=#FFFFFF;spacing=5;align=left;">
+          <mxGeometry x="60" y="939" width="335" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="p4_use6" parent="p4_1" vertex="1" value="Block-private C registers. No MMIO address allocation in the implemented C model." style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;strokeColor=#333333;fillColor=#FFFFFF;spacing=5;align=left;">
+          <mxGeometry x="395" y="939" width="1345" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="p4_addr7" parent="p4_1" vertex="1" value="Runtime input endpoint" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;strokeColor=#333333;fillColor=#FFFFFF;spacing=5;align=left;">
+          <mxGeometry x="60" y="998" width="335" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="p4_use7" parent="p4_1" vertex="1" value="Stream ports, not an SRAM/MMIO window. STREAM_LOAD writes one 16-byte beat into the activation region." style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;strokeColor=#333333;fillColor=#FFFFFF;spacing=5;align=left;">
+          <mxGeometry x="395" y="998" width="1345" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="p4_addr8" parent="p4_1" vertex="1" value="Runtime output endpoint" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;strokeColor=#333333;fillColor=#FFFFFF;spacing=5;align=left;">
+          <mxGeometry x="60" y="1057" width="335" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="p4_use8" parent="p4_1" vertex="1" value="STREAM_STORE reads an activation-region beat. output_push accepts it when output_ready is true." style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;strokeColor=#333333;fillColor=#FFFFFF;spacing=5;align=left;">
+          <mxGeometry x="395" y="1057" width="1345" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="p4_ref_note" parent="p4_1" vertex="1" value="&lt;b&gt;Address conventions and source alignment&lt;/b&gt;&lt;br&gt;One 1 MiB SRAM macro, 65,536 words × 16 bytes. Aligned byte address → word index address[19:4]. All instruction address fields remain 32 bits.&lt;br&gt;This page applies the agreed 1 MiB map. Port/register names are checked against the supplied c-model.zip; that saved source still has the earlier capacity constants.&lt;br&gt;The SoC slave is a future integration label. Do not interpret C struct fields or host stream buffers as implemented MMIO peripherals." style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;strokeColor=#333333;fillColor=#FFFFFF;spacing=5;fillColor=#F1F5FF;align=left;">
+          <mxGeometry x="60" y="1150" width="1680" height="145" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="mac_detail_v1" name="05 — Inside the 4 × 4 MAC array">
+    <mxGraphModel grid="1" page="1" pageScale="1" pageWidth="1750" pageHeight="1030" background="#FFFFFF">
+      <root>
+        <mxCell id="p5_0" />
+        <mxCell id="p5_1" parent="p5_0" />
+        <mxCell id="p5_title" value="&lt;b&gt;Inside the MAC engine • one compute edge&lt;/b&gt;" parent="p5_1" vertex="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;fontFamily=Helvetica;fontSize=16;fontColor=#222222;align=center;verticalAlign=middle;fontSize=24;align=left;">
+          <mxGeometry x="45" y="30" width="1100" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_sub" value="Outer-product update: W[neuron,k] is broadcast across samples; X[vector,k] is broadcast across neurons. No PE-to-PE partial-sum shift." parent="p5_1" vertex="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;fontFamily=Helvetica;fontSize=16;fontColor=#222222;align=center;verticalAlign=middle;align=left;">
+          <mxGeometry x="45" y="80" width="1100" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_x0" value="&lt;b&gt;X[0, k]&lt;/b&gt;&lt;br&gt;Vector 0" parent="p5_1" vertex="1" style="rounded=0;html=1;whiteSpace=wrap;fillColor=#FFFFFF;strokeColor=#333333;fontColor=#111111;fontFamily=Helvetica;fontSize=15;">
+          <mxGeometry x="230" y="150" width="110" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_x1" value="&lt;b&gt;X[1, k]&lt;/b&gt;&lt;br&gt;Vector 1" parent="p5_1" vertex="1" style="rounded=0;html=1;whiteSpace=wrap;fillColor=#FFFFFF;strokeColor=#333333;fontColor=#111111;fontFamily=Helvetica;fontSize=15;">
+          <mxGeometry x="453" y="150" width="110" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_x2" value="&lt;b&gt;X[2, k]&lt;/b&gt;&lt;br&gt;Vector 2" parent="p5_1" vertex="1" style="rounded=0;html=1;whiteSpace=wrap;fillColor=#FFFFFF;strokeColor=#333333;fontColor=#111111;fontFamily=Helvetica;fontSize=15;">
+          <mxGeometry x="676" y="150" width="110" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_x3" value="&lt;b&gt;X[3, k]&lt;/b&gt;&lt;br&gt;Vector 3" parent="p5_1" vertex="1" style="rounded=0;html=1;whiteSpace=wrap;fillColor=#FFFFFF;strokeColor=#333333;fontColor=#111111;fontFamily=Helvetica;fontSize=15;">
+          <mxGeometry x="899" y="150" width="110" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_w0" value="&lt;b&gt;W[0, k]&lt;/b&gt;&lt;br&gt;Neuron 0" parent="p5_1" vertex="1" style="rounded=0;html=1;whiteSpace=wrap;fillColor=#FFFFFF;strokeColor=#333333;fontColor=#111111;fontFamily=Helvetica;fontSize=15;">
+          <mxGeometry x="48" y="257" width="130" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_rt0_0" value="" parent="p5_1" vertex="1" style="ellipse;fillColor=#333333;strokeColor=#333333;">
+          <mxGeometry x="376" y="282" width="6" height="6" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_ct0_0" value="" parent="p5_1" vertex="1" style="ellipse;fillColor=#333333;strokeColor=#333333;">
+          <mxGeometry x="282" y="347" width="6" height="6" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_pe0_0" value="&lt;b&gt;PE [0,0]&lt;/b&gt;&lt;br&gt;value[0][0] • INT32" parent="p5_1" vertex="1" style="rounded=0;html=1;whiteSpace=wrap;fillColor=#FFFFFF;strokeColor=#333333;fontColor=#111111;fontFamily=Helvetica;fontSize=15;">
+          <mxGeometry x="312" y="315" width="134" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_wtrpe0_0" source="p5_w0" target="p5_rt0_0" edge="1" parent="p5_1" style="edgeStyle=none;html=1;endArrow=none;strokeWidth=1.5;strokeColor=#333333;jumpStyle=arc;jumpSize=8;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_wtappe0_0" source="p5_rt0_0" target="p5_pe0_0" edge="1" parent="p5_1" style="edgeStyle=none;html=1;endArrow=classic;strokeWidth=1.5;strokeColor=#333333;jumpStyle=arc;jumpSize=8;exitX=0.5;exitY=1;entryX=0.5;entryY=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_xtrpe0_0" source="p5_x0" target="p5_ct0_0" edge="1" parent="p5_1" style="edgeStyle=none;html=1;endArrow=none;strokeWidth=1.5;strokeColor=#333333;jumpStyle=arc;jumpSize=8;exitX=0.5;exitY=1;entryX=0.5;entryY=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_xtappe0_0" source="p5_ct0_0" target="p5_pe0_0" edge="1" parent="p5_1" style="edgeStyle=none;html=1;endArrow=classic;strokeWidth=1.5;strokeColor=#333333;jumpStyle=arc;jumpSize=8;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_rt0_1" value="" parent="p5_1" vertex="1" style="ellipse;fillColor=#333333;strokeColor=#333333;">
+          <mxGeometry x="599" y="282" width="6" height="6" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_ct0_1" value="" parent="p5_1" vertex="1" style="ellipse;fillColor=#333333;strokeColor=#333333;">
+          <mxGeometry x="505" y="347" width="6" height="6" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_pe0_1" value="&lt;b&gt;PE [0,1]&lt;/b&gt;&lt;br&gt;value[0][1] • INT32" parent="p5_1" vertex="1" style="rounded=0;html=1;whiteSpace=wrap;fillColor=#FFFFFF;strokeColor=#333333;fontColor=#111111;fontFamily=Helvetica;fontSize=15;">
+          <mxGeometry x="535" y="315" width="134" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_wtrpe0_1" source="p5_rt0_0" target="p5_rt0_1" edge="1" parent="p5_1" style="edgeStyle=none;html=1;endArrow=none;strokeWidth=1.5;strokeColor=#333333;jumpStyle=arc;jumpSize=8;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_wtappe0_1" source="p5_rt0_1" target="p5_pe0_1" edge="1" parent="p5_1" style="edgeStyle=none;html=1;endArrow=classic;strokeWidth=1.5;strokeColor=#333333;jumpStyle=arc;jumpSize=8;exitX=0.5;exitY=1;entryX=0.5;entryY=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_xtrpe0_1" source="p5_x1" target="p5_ct0_1" edge="1" parent="p5_1" style="edgeStyle=none;html=1;endArrow=none;strokeWidth=1.5;strokeColor=#333333;jumpStyle=arc;jumpSize=8;exitX=0.5;exitY=1;entryX=0.5;entryY=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_xtappe0_1" source="p5_ct0_1" target="p5_pe0_1" edge="1" parent="p5_1" style="edgeStyle=none;html=1;endArrow=classic;strokeWidth=1.5;strokeColor=#333333;jumpStyle=arc;jumpSize=8;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_rt0_2" value="" parent="p5_1" vertex="1" style="ellipse;fillColor=#333333;strokeColor=#333333;">
+          <mxGeometry x="822" y="282" width="6" height="6" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_ct0_2" value="" parent="p5_1" vertex="1" style="ellipse;fillColor=#333333;strokeColor=#333333;">
+          <mxGeometry x="728" y="347" width="6" height="6" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_pe0_2" value="&lt;b&gt;PE [0,2]&lt;/b&gt;&lt;br&gt;value[0][2] • INT32" parent="p5_1" vertex="1" style="rounded=0;html=1;whiteSpace=wrap;fillColor=#FFFFFF;strokeColor=#333333;fontColor=#111111;fontFamily=Helvetica;fontSize=15;">
+          <mxGeometry x="758" y="315" width="134" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_wtrpe0_2" source="p5_rt0_1" target="p5_rt0_2" edge="1" parent="p5_1" style="edgeStyle=none;html=1;endArrow=none;strokeWidth=1.5;strokeColor=#333333;jumpStyle=arc;jumpSize=8;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_wtappe0_2" source="p5_rt0_2" target="p5_pe0_2" edge="1" parent="p5_1" style="edgeStyle=none;html=1;endArrow=classic;strokeWidth=1.5;strokeColor=#333333;jumpStyle=arc;jumpSize=8;exitX=0.5;exitY=1;entryX=0.5;entryY=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_xtrpe0_2" source="p5_x2" target="p5_ct0_2" edge="1" parent="p5_1" style="edgeStyle=none;html=1;endArrow=none;strokeWidth=1.5;strokeColor=#333333;jumpStyle=arc;jumpSize=8;exitX=0.5;exitY=1;entryX=0.5;entryY=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_xtappe0_2" source="p5_ct0_2" target="p5_pe0_2" edge="1" parent="p5_1" style="edgeStyle=none;html=1;endArrow=classic;strokeWidth=1.5;strokeColor=#333333;jumpStyle=arc;jumpSize=8;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_rt0_3" value="" parent="p5_1" vertex="1" style="ellipse;fillColor=#333333;strokeColor=#333333;">
+          <mxGeometry x="1045" y="282" width="6" height="6" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_ct0_3" value="" parent="p5_1" vertex="1" style="ellipse;fillColor=#333333;strokeColor=#333333;">
+          <mxGeometry x="951" y="347" width="6" height="6" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_pe0_3" value="&lt;b&gt;PE [0,3]&lt;/b&gt;&lt;br&gt;value[0][3] • INT32" parent="p5_1" vertex="1" style="rounded=0;html=1;whiteSpace=wrap;fillColor=#FFFFFF;strokeColor=#333333;fontColor=#111111;fontFamily=Helvetica;fontSize=15;">
+          <mxGeometry x="981" y="315" width="134" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_wtrpe0_3" source="p5_rt0_2" target="p5_rt0_3" edge="1" parent="p5_1" style="edgeStyle=none;html=1;endArrow=none;strokeWidth=1.5;strokeColor=#333333;jumpStyle=arc;jumpSize=8;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_wtappe0_3" source="p5_rt0_3" target="p5_pe0_3" edge="1" parent="p5_1" style="edgeStyle=none;html=1;endArrow=classic;strokeWidth=1.5;strokeColor=#333333;jumpStyle=arc;jumpSize=8;exitX=0.5;exitY=1;entryX=0.5;entryY=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_xtrpe0_3" source="p5_x3" target="p5_ct0_3" edge="1" parent="p5_1" style="edgeStyle=none;html=1;endArrow=none;strokeWidth=1.5;strokeColor=#333333;jumpStyle=arc;jumpSize=8;exitX=0.5;exitY=1;entryX=0.5;entryY=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_xtappe0_3" source="p5_ct0_3" target="p5_pe0_3" edge="1" parent="p5_1" style="edgeStyle=none;html=1;endArrow=classic;strokeWidth=1.5;strokeColor=#333333;jumpStyle=arc;jumpSize=8;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_w1" value="&lt;b&gt;W[1, k]&lt;/b&gt;&lt;br&gt;Neuron 1" parent="p5_1" vertex="1" style="rounded=0;html=1;whiteSpace=wrap;fillColor=#FFFFFF;strokeColor=#333333;fontColor=#111111;fontFamily=Helvetica;fontSize=15;">
+          <mxGeometry x="48" y="402" width="130" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_rt1_0" value="" parent="p5_1" vertex="1" style="ellipse;fillColor=#333333;strokeColor=#333333;">
+          <mxGeometry x="376" y="427" width="6" height="6" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_ct1_0" value="" parent="p5_1" vertex="1" style="ellipse;fillColor=#333333;strokeColor=#333333;">
+          <mxGeometry x="282" y="492" width="6" height="6" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_pe1_0" value="&lt;b&gt;PE [1,0]&lt;/b&gt;&lt;br&gt;value[1][0] • INT32" parent="p5_1" vertex="1" style="rounded=0;html=1;whiteSpace=wrap;fillColor=#FFFFFF;strokeColor=#333333;fontColor=#111111;fontFamily=Helvetica;fontSize=15;">
+          <mxGeometry x="312" y="460" width="134" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_wtrpe1_0" source="p5_w1" target="p5_rt1_0" edge="1" parent="p5_1" style="edgeStyle=none;html=1;endArrow=none;strokeWidth=1.5;strokeColor=#333333;jumpStyle=arc;jumpSize=8;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_wtappe1_0" source="p5_rt1_0" target="p5_pe1_0" edge="1" parent="p5_1" style="edgeStyle=none;html=1;endArrow=classic;strokeWidth=1.5;strokeColor=#333333;jumpStyle=arc;jumpSize=8;exitX=0.5;exitY=1;entryX=0.5;entryY=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_xtrpe1_0" source="p5_ct0_0" target="p5_ct1_0" edge="1" parent="p5_1" style="edgeStyle=none;html=1;endArrow=none;strokeWidth=1.5;strokeColor=#333333;jumpStyle=arc;jumpSize=8;exitX=0.5;exitY=1;entryX=0.5;entryY=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_xtappe1_0" source="p5_ct1_0" target="p5_pe1_0" edge="1" parent="p5_1" style="edgeStyle=none;html=1;endArrow=classic;strokeWidth=1.5;strokeColor=#333333;jumpStyle=arc;jumpSize=8;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_rt1_1" value="" parent="p5_1" vertex="1" style="ellipse;fillColor=#333333;strokeColor=#333333;">
+          <mxGeometry x="599" y="427" width="6" height="6" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_ct1_1" value="" parent="p5_1" vertex="1" style="ellipse;fillColor=#333333;strokeColor=#333333;">
+          <mxGeometry x="505" y="492" width="6" height="6" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_pe1_1" value="&lt;b&gt;PE [1,1]&lt;/b&gt;&lt;br&gt;value[1][1] • INT32" parent="p5_1" vertex="1" style="rounded=0;html=1;whiteSpace=wrap;fillColor=#FFFFFF;strokeColor=#333333;fontColor=#111111;fontFamily=Helvetica;fontSize=15;">
+          <mxGeometry x="535" y="460" width="134" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_wtrpe1_1" source="p5_rt1_0" target="p5_rt1_1" edge="1" parent="p5_1" style="edgeStyle=none;html=1;endArrow=none;strokeWidth=1.5;strokeColor=#333333;jumpStyle=arc;jumpSize=8;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_wtappe1_1" source="p5_rt1_1" target="p5_pe1_1" edge="1" parent="p5_1" style="edgeStyle=none;html=1;endArrow=classic;strokeWidth=1.5;strokeColor=#333333;jumpStyle=arc;jumpSize=8;exitX=0.5;exitY=1;entryX=0.5;entryY=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_xtrpe1_1" source="p5_ct0_1" target="p5_ct1_1" edge="1" parent="p5_1" style="edgeStyle=none;html=1;endArrow=none;strokeWidth=1.5;strokeColor=#333333;jumpStyle=arc;jumpSize=8;exitX=0.5;exitY=1;entryX=0.5;entryY=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_xtappe1_1" source="p5_ct1_1" target="p5_pe1_1" edge="1" parent="p5_1" style="edgeStyle=none;html=1;endArrow=classic;strokeWidth=1.5;strokeColor=#333333;jumpStyle=arc;jumpSize=8;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_rt1_2" value="" parent="p5_1" vertex="1" style="ellipse;fillColor=#333333;strokeColor=#333333;">
+          <mxGeometry x="822" y="427" width="6" height="6" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_ct1_2" value="" parent="p5_1" vertex="1" style="ellipse;fillColor=#333333;strokeColor=#333333;">
+          <mxGeometry x="728" y="492" width="6" height="6" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_pe1_2" value="&lt;b&gt;PE [1,2]&lt;/b&gt;&lt;br&gt;value[1][2] • INT32" parent="p5_1" vertex="1" style="rounded=0;html=1;whiteSpace=wrap;fillColor=#FFFFFF;strokeColor=#333333;fontColor=#111111;fontFamily=Helvetica;fontSize=15;">
+          <mxGeometry x="758" y="460" width="134" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_wtrpe1_2" source="p5_rt1_1" target="p5_rt1_2" edge="1" parent="p5_1" style="edgeStyle=none;html=1;endArrow=none;strokeWidth=1.5;strokeColor=#333333;jumpStyle=arc;jumpSize=8;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_wtappe1_2" source="p5_rt1_2" target="p5_pe1_2" edge="1" parent="p5_1" style="edgeStyle=none;html=1;endArrow=classic;strokeWidth=1.5;strokeColor=#333333;jumpStyle=arc;jumpSize=8;exitX=0.5;exitY=1;entryX=0.5;entryY=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_xtrpe1_2" source="p5_ct0_2" target="p5_ct1_2" edge="1" parent="p5_1" style="edgeStyle=none;html=1;endArrow=none;strokeWidth=1.5;strokeColor=#333333;jumpStyle=arc;jumpSize=8;exitX=0.5;exitY=1;entryX=0.5;entryY=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_xtappe1_2" source="p5_ct1_2" target="p5_pe1_2" edge="1" parent="p5_1" style="edgeStyle=none;html=1;endArrow=classic;strokeWidth=1.5;strokeColor=#333333;jumpStyle=arc;jumpSize=8;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_rt1_3" value="" parent="p5_1" vertex="1" style="ellipse;fillColor=#333333;strokeColor=#333333;">
+          <mxGeometry x="1045" y="427" width="6" height="6" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_ct1_3" value="" parent="p5_1" vertex="1" style="ellipse;fillColor=#333333;strokeColor=#333333;">
+          <mxGeometry x="951" y="492" width="6" height="6" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_pe1_3" value="&lt;b&gt;PE [1,3]&lt;/b&gt;&lt;br&gt;value[1][3] • INT32" parent="p5_1" vertex="1" style="rounded=0;html=1;whiteSpace=wrap;fillColor=#FFFFFF;strokeColor=#333333;fontColor=#111111;fontFamily=Helvetica;fontSize=15;">
+          <mxGeometry x="981" y="460" width="134" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_wtrpe1_3" source="p5_rt1_2" target="p5_rt1_3" edge="1" parent="p5_1" style="edgeStyle=none;html=1;endArrow=none;strokeWidth=1.5;strokeColor=#333333;jumpStyle=arc;jumpSize=8;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_wtappe1_3" source="p5_rt1_3" target="p5_pe1_3" edge="1" parent="p5_1" style="edgeStyle=none;html=1;endArrow=classic;strokeWidth=1.5;strokeColor=#333333;jumpStyle=arc;jumpSize=8;exitX=0.5;exitY=1;entryX=0.5;entryY=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_xtrpe1_3" source="p5_ct0_3" target="p5_ct1_3" edge="1" parent="p5_1" style="edgeStyle=none;html=1;endArrow=none;strokeWidth=1.5;strokeColor=#333333;jumpStyle=arc;jumpSize=8;exitX=0.5;exitY=1;entryX=0.5;entryY=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_xtappe1_3" source="p5_ct1_3" target="p5_pe1_3" edge="1" parent="p5_1" style="edgeStyle=none;html=1;endArrow=classic;strokeWidth=1.5;strokeColor=#333333;jumpStyle=arc;jumpSize=8;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_w2" value="&lt;b&gt;W[2, k]&lt;/b&gt;&lt;br&gt;Neuron 2" parent="p5_1" vertex="1" style="rounded=0;html=1;whiteSpace=wrap;fillColor=#FFFFFF;strokeColor=#333333;fontColor=#111111;fontFamily=Helvetica;fontSize=15;">
+          <mxGeometry x="48" y="547" width="130" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_rt2_0" value="" parent="p5_1" vertex="1" style="ellipse;fillColor=#333333;strokeColor=#333333;">
+          <mxGeometry x="376" y="572" width="6" height="6" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_ct2_0" value="" parent="p5_1" vertex="1" style="ellipse;fillColor=#333333;strokeColor=#333333;">
+          <mxGeometry x="282" y="637" width="6" height="6" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_pe2_0" value="&lt;b&gt;PE [2,0]&lt;/b&gt;&lt;br&gt;value[2][0] • INT32" parent="p5_1" vertex="1" style="rounded=0;html=1;whiteSpace=wrap;fillColor=#FFFFFF;strokeColor=#333333;fontColor=#111111;fontFamily=Helvetica;fontSize=15;">
+          <mxGeometry x="312" y="605" width="134" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_wtrpe2_0" source="p5_w2" target="p5_rt2_0" edge="1" parent="p5_1" style="edgeStyle=none;html=1;endArrow=none;strokeWidth=1.5;strokeColor=#333333;jumpStyle=arc;jumpSize=8;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_wtappe2_0" source="p5_rt2_0" target="p5_pe2_0" edge="1" parent="p5_1" style="edgeStyle=none;html=1;endArrow=classic;strokeWidth=1.5;strokeColor=#333333;jumpStyle=arc;jumpSize=8;exitX=0.5;exitY=1;entryX=0.5;entryY=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_xtrpe2_0" source="p5_ct1_0" target="p5_ct2_0" edge="1" parent="p5_1" style="edgeStyle=none;html=1;endArrow=none;strokeWidth=1.5;strokeColor=#333333;jumpStyle=arc;jumpSize=8;exitX=0.5;exitY=1;entryX=0.5;entryY=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_xtappe2_0" source="p5_ct2_0" target="p5_pe2_0" edge="1" parent="p5_1" style="edgeStyle=none;html=1;endArrow=classic;strokeWidth=1.5;strokeColor=#333333;jumpStyle=arc;jumpSize=8;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_rt2_1" value="" parent="p5_1" vertex="1" style="ellipse;fillColor=#333333;strokeColor=#333333;">
+          <mxGeometry x="599" y="572" width="6" height="6" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_ct2_1" value="" parent="p5_1" vertex="1" style="ellipse;fillColor=#333333;strokeColor=#333333;">
+          <mxGeometry x="505" y="637" width="6" height="6" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_pe2_1" value="&lt;b&gt;PE [2,1]&lt;/b&gt;&lt;br&gt;value[2][1] • INT32" parent="p5_1" vertex="1" style="rounded=0;html=1;whiteSpace=wrap;fillColor=#FFFFFF;strokeColor=#333333;fontColor=#111111;fontFamily=Helvetica;fontSize=15;">
+          <mxGeometry x="535" y="605" width="134" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_wtrpe2_1" source="p5_rt2_0" target="p5_rt2_1" edge="1" parent="p5_1" style="edgeStyle=none;html=1;endArrow=none;strokeWidth=1.5;strokeColor=#333333;jumpStyle=arc;jumpSize=8;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_wtappe2_1" source="p5_rt2_1" target="p5_pe2_1" edge="1" parent="p5_1" style="edgeStyle=none;html=1;endArrow=classic;strokeWidth=1.5;strokeColor=#333333;jumpStyle=arc;jumpSize=8;exitX=0.5;exitY=1;entryX=0.5;entryY=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_xtrpe2_1" source="p5_ct1_1" target="p5_ct2_1" edge="1" parent="p5_1" style="edgeStyle=none;html=1;endArrow=none;strokeWidth=1.5;strokeColor=#333333;jumpStyle=arc;jumpSize=8;exitX=0.5;exitY=1;entryX=0.5;entryY=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_xtappe2_1" source="p5_ct2_1" target="p5_pe2_1" edge="1" parent="p5_1" style="edgeStyle=none;html=1;endArrow=classic;strokeWidth=1.5;strokeColor=#333333;jumpStyle=arc;jumpSize=8;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_rt2_2" value="" parent="p5_1" vertex="1" style="ellipse;fillColor=#333333;strokeColor=#333333;">
+          <mxGeometry x="822" y="572" width="6" height="6" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_ct2_2" value="" parent="p5_1" vertex="1" style="ellipse;fillColor=#333333;strokeColor=#333333;">
+          <mxGeometry x="728" y="637" width="6" height="6" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_pe2_2" value="&lt;b&gt;PE [2,2]&lt;/b&gt;&lt;br&gt;value[2][2] • INT32" parent="p5_1" vertex="1" style="rounded=0;html=1;whiteSpace=wrap;fillColor=#FFFFFF;strokeColor=#333333;fontColor=#111111;fontFamily=Helvetica;fontSize=15;">
+          <mxGeometry x="758" y="605" width="134" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_wtrpe2_2" source="p5_rt2_1" target="p5_rt2_2" edge="1" parent="p5_1" style="edgeStyle=none;html=1;endArrow=none;strokeWidth=1.5;strokeColor=#333333;jumpStyle=arc;jumpSize=8;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_wtappe2_2" source="p5_rt2_2" target="p5_pe2_2" edge="1" parent="p5_1" style="edgeStyle=none;html=1;endArrow=classic;strokeWidth=1.5;strokeColor=#333333;jumpStyle=arc;jumpSize=8;exitX=0.5;exitY=1;entryX=0.5;entryY=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_xtrpe2_2" source="p5_ct1_2" target="p5_ct2_2" edge="1" parent="p5_1" style="edgeStyle=none;html=1;endArrow=none;strokeWidth=1.5;strokeColor=#333333;jumpStyle=arc;jumpSize=8;exitX=0.5;exitY=1;entryX=0.5;entryY=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_xtappe2_2" source="p5_ct2_2" target="p5_pe2_2" edge="1" parent="p5_1" style="edgeStyle=none;html=1;endArrow=classic;strokeWidth=1.5;strokeColor=#333333;jumpStyle=arc;jumpSize=8;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_rt2_3" value="" parent="p5_1" vertex="1" style="ellipse;fillColor=#333333;strokeColor=#333333;">
+          <mxGeometry x="1045" y="572" width="6" height="6" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_ct2_3" value="" parent="p5_1" vertex="1" style="ellipse;fillColor=#333333;strokeColor=#333333;">
+          <mxGeometry x="951" y="637" width="6" height="6" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_pe2_3" value="&lt;b&gt;PE [2,3]&lt;/b&gt;&lt;br&gt;value[2][3] • INT32" parent="p5_1" vertex="1" style="rounded=0;html=1;whiteSpace=wrap;fillColor=#FFFFFF;strokeColor=#333333;fontColor=#111111;fontFamily=Helvetica;fontSize=15;">
+          <mxGeometry x="981" y="605" width="134" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_wtrpe2_3" source="p5_rt2_2" target="p5_rt2_3" edge="1" parent="p5_1" style="edgeStyle=none;html=1;endArrow=none;strokeWidth=1.5;strokeColor=#333333;jumpStyle=arc;jumpSize=8;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_wtappe2_3" source="p5_rt2_3" target="p5_pe2_3" edge="1" parent="p5_1" style="edgeStyle=none;html=1;endArrow=classic;strokeWidth=1.5;strokeColor=#333333;jumpStyle=arc;jumpSize=8;exitX=0.5;exitY=1;entryX=0.5;entryY=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_xtrpe2_3" source="p5_ct1_3" target="p5_ct2_3" edge="1" parent="p5_1" style="edgeStyle=none;html=1;endArrow=none;strokeWidth=1.5;strokeColor=#333333;jumpStyle=arc;jumpSize=8;exitX=0.5;exitY=1;entryX=0.5;entryY=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_xtappe2_3" source="p5_ct2_3" target="p5_pe2_3" edge="1" parent="p5_1" style="edgeStyle=none;html=1;endArrow=classic;strokeWidth=1.5;strokeColor=#333333;jumpStyle=arc;jumpSize=8;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_w3" value="&lt;b&gt;W[3, k]&lt;/b&gt;&lt;br&gt;Neuron 3" parent="p5_1" vertex="1" style="rounded=0;html=1;whiteSpace=wrap;fillColor=#FFFFFF;strokeColor=#333333;fontColor=#111111;fontFamily=Helvetica;fontSize=15;">
+          <mxGeometry x="48" y="692" width="130" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_rt3_0" value="" parent="p5_1" vertex="1" style="ellipse;fillColor=#333333;strokeColor=#333333;">
+          <mxGeometry x="376" y="717" width="6" height="6" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_ct3_0" value="" parent="p5_1" vertex="1" style="ellipse;fillColor=#333333;strokeColor=#333333;">
+          <mxGeometry x="282" y="782" width="6" height="6" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_pe3_0" value="&lt;b&gt;PE [3,0]&lt;/b&gt;&lt;br&gt;value[3][0] • INT32" parent="p5_1" vertex="1" style="rounded=0;html=1;whiteSpace=wrap;fillColor=#FFFFFF;strokeColor=#333333;fontColor=#111111;fontFamily=Helvetica;fontSize=15;">
+          <mxGeometry x="312" y="750" width="134" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_wtrpe3_0" source="p5_w3" target="p5_rt3_0" edge="1" parent="p5_1" style="edgeStyle=none;html=1;endArrow=none;strokeWidth=1.5;strokeColor=#333333;jumpStyle=arc;jumpSize=8;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_wtappe3_0" source="p5_rt3_0" target="p5_pe3_0" edge="1" parent="p5_1" style="edgeStyle=none;html=1;endArrow=classic;strokeWidth=1.5;strokeColor=#333333;jumpStyle=arc;jumpSize=8;exitX=0.5;exitY=1;entryX=0.5;entryY=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_xtrpe3_0" source="p5_ct2_0" target="p5_ct3_0" edge="1" parent="p5_1" style="edgeStyle=none;html=1;endArrow=none;strokeWidth=1.5;strokeColor=#333333;jumpStyle=arc;jumpSize=8;exitX=0.5;exitY=1;entryX=0.5;entryY=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_xtappe3_0" source="p5_ct3_0" target="p5_pe3_0" edge="1" parent="p5_1" style="edgeStyle=none;html=1;endArrow=classic;strokeWidth=1.5;strokeColor=#333333;jumpStyle=arc;jumpSize=8;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_rt3_1" value="" parent="p5_1" vertex="1" style="ellipse;fillColor=#333333;strokeColor=#333333;">
+          <mxGeometry x="599" y="717" width="6" height="6" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_ct3_1" value="" parent="p5_1" vertex="1" style="ellipse;fillColor=#333333;strokeColor=#333333;">
+          <mxGeometry x="505" y="782" width="6" height="6" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_pe3_1" value="&lt;b&gt;PE [3,1]&lt;/b&gt;&lt;br&gt;value[3][1] • INT32" parent="p5_1" vertex="1" style="rounded=0;html=1;whiteSpace=wrap;fillColor=#FFFFFF;strokeColor=#333333;fontColor=#111111;fontFamily=Helvetica;fontSize=15;">
+          <mxGeometry x="535" y="750" width="134" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_wtrpe3_1" source="p5_rt3_0" target="p5_rt3_1" edge="1" parent="p5_1" style="edgeStyle=none;html=1;endArrow=none;strokeWidth=1.5;strokeColor=#333333;jumpStyle=arc;jumpSize=8;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_wtappe3_1" source="p5_rt3_1" target="p5_pe3_1" edge="1" parent="p5_1" style="edgeStyle=none;html=1;endArrow=classic;strokeWidth=1.5;strokeColor=#333333;jumpStyle=arc;jumpSize=8;exitX=0.5;exitY=1;entryX=0.5;entryY=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_xtrpe3_1" source="p5_ct2_1" target="p5_ct3_1" edge="1" parent="p5_1" style="edgeStyle=none;html=1;endArrow=none;strokeWidth=1.5;strokeColor=#333333;jumpStyle=arc;jumpSize=8;exitX=0.5;exitY=1;entryX=0.5;entryY=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_xtappe3_1" source="p5_ct3_1" target="p5_pe3_1" edge="1" parent="p5_1" style="edgeStyle=none;html=1;endArrow=classic;strokeWidth=1.5;strokeColor=#333333;jumpStyle=arc;jumpSize=8;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_rt3_2" value="" parent="p5_1" vertex="1" style="ellipse;fillColor=#333333;strokeColor=#333333;">
+          <mxGeometry x="822" y="717" width="6" height="6" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_ct3_2" value="" parent="p5_1" vertex="1" style="ellipse;fillColor=#333333;strokeColor=#333333;">
+          <mxGeometry x="728" y="782" width="6" height="6" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_pe3_2" value="&lt;b&gt;PE [3,2]&lt;/b&gt;&lt;br&gt;value[3][2] • INT32" parent="p5_1" vertex="1" style="rounded=0;html=1;whiteSpace=wrap;fillColor=#FFFFFF;strokeColor=#333333;fontColor=#111111;fontFamily=Helvetica;fontSize=15;">
+          <mxGeometry x="758" y="750" width="134" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_wtrpe3_2" source="p5_rt3_1" target="p5_rt3_2" edge="1" parent="p5_1" style="edgeStyle=none;html=1;endArrow=none;strokeWidth=1.5;strokeColor=#333333;jumpStyle=arc;jumpSize=8;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_wtappe3_2" source="p5_rt3_2" target="p5_pe3_2" edge="1" parent="p5_1" style="edgeStyle=none;html=1;endArrow=classic;strokeWidth=1.5;strokeColor=#333333;jumpStyle=arc;jumpSize=8;exitX=0.5;exitY=1;entryX=0.5;entryY=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_xtrpe3_2" source="p5_ct2_2" target="p5_ct3_2" edge="1" parent="p5_1" style="edgeStyle=none;html=1;endArrow=none;strokeWidth=1.5;strokeColor=#333333;jumpStyle=arc;jumpSize=8;exitX=0.5;exitY=1;entryX=0.5;entryY=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_xtappe3_2" source="p5_ct3_2" target="p5_pe3_2" edge="1" parent="p5_1" style="edgeStyle=none;html=1;endArrow=classic;strokeWidth=1.5;strokeColor=#333333;jumpStyle=arc;jumpSize=8;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_rt3_3" value="" parent="p5_1" vertex="1" style="ellipse;fillColor=#333333;strokeColor=#333333;">
+          <mxGeometry x="1045" y="717" width="6" height="6" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_ct3_3" value="" parent="p5_1" vertex="1" style="ellipse;fillColor=#333333;strokeColor=#333333;">
+          <mxGeometry x="951" y="782" width="6" height="6" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_pe3_3" value="&lt;b&gt;PE [3,3]&lt;/b&gt;&lt;br&gt;value[3][3] • INT32" parent="p5_1" vertex="1" style="rounded=0;html=1;whiteSpace=wrap;fillColor=#FFFFFF;strokeColor=#333333;fontColor=#111111;fontFamily=Helvetica;fontSize=15;">
+          <mxGeometry x="981" y="750" width="134" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_wtrpe3_3" source="p5_rt3_2" target="p5_rt3_3" edge="1" parent="p5_1" style="edgeStyle=none;html=1;endArrow=none;strokeWidth=1.5;strokeColor=#333333;jumpStyle=arc;jumpSize=8;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_wtappe3_3" source="p5_rt3_3" target="p5_pe3_3" edge="1" parent="p5_1" style="edgeStyle=none;html=1;endArrow=classic;strokeWidth=1.5;strokeColor=#333333;jumpStyle=arc;jumpSize=8;exitX=0.5;exitY=1;entryX=0.5;entryY=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_xtrpe3_3" source="p5_ct2_3" target="p5_ct3_3" edge="1" parent="p5_1" style="edgeStyle=none;html=1;endArrow=none;strokeWidth=1.5;strokeColor=#333333;jumpStyle=arc;jumpSize=8;exitX=0.5;exitY=1;entryX=0.5;entryY=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_xtappe3_3" source="p5_ct3_3" target="p5_pe3_3" edge="1" parent="p5_1" style="edgeStyle=none;html=1;endArrow=classic;strokeWidth=1.5;strokeColor=#333333;jumpStyle=arc;jumpSize=8;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_pe_detail" value="&lt;b&gt;One PE: mac.regs.accumulators.value[2][1]&lt;/b&gt;&lt;br&gt;&lt;br&gt;Owns neuron 2 for independent vector 1.&lt;br&gt;&lt;br&gt;At local k=0 and accumulate=false, start from B[2]. Otherwise use this PE’s retained accumulator.&lt;br&gt;&lt;br&gt;Every enabled edge adds W[2,k] × X[1,k]. K is 1..4 per EXEC_MAC; further reduction tiles retain sums.&lt;br&gt;&lt;br&gt;Only the completed dot product goes through activation and scale/clamp." parent="p5_1" vertex="1" style="rounded=0;html=1;whiteSpace=wrap;fillColor=#FFFFFF;strokeColor=#333333;fontColor=#111111;fontFamily=Helvetica;fontSize=15;fillColor=#F1F5FF;strokeColor=#CBD5E1;align=left;verticalAlign=top;spacing=16;">
+          <mxGeometry x="1170" y="240" width="515" height="335" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_slots" value="&lt;b&gt;Operand storage inside Mac&lt;/b&gt;&lt;br&gt;&lt;br&gt;regs.slot[slot].operand[field]: X=0, W=1, B=2, CFG=3; loaded[field] qualifies each 128-bit field.&lt;br&gt;&lt;br&gt;X byte = 4*v+k; W byte = 4*r+k. All active PEs use the same k. Enable only r&amp;lt;neurons and v&amp;lt;batch." parent="p5_1" vertex="1" style="rounded=0;html=1;whiteSpace=wrap;fillColor=#FFFFFF;strokeColor=#333333;fontColor=#111111;fontFamily=Helvetica;fontSize=15;fillColor=#F1F5FF;strokeColor=#CBD5E1;align=left;verticalAlign=top;spacing=16;">
+          <mxGeometry x="1170" y="603" width="515" height="215" as="geometry" />
+        </mxCell>
+        <mxCell id="p5_legend" value="&lt;b&gt;Reading the wires&lt;/b&gt;&lt;br&gt;Horizontal trunks broadcast W; vertical trunks broadcast X. Dots are branch points; undotted crossings are separate nets.&lt;br&gt;At N=4 and batch=4, all 16 accumulators update on each compute edge. AccSignal carries 16 × INT32 sums plus CFG and qualifiers." parent="p5_1" vertex="1" style="rounded=0;html=1;whiteSpace=wrap;fillColor=#FFFFFF;strokeColor=#333333;fontColor=#111111;fontFamily=Helvetica;fontSize=15;fillColor=#F1F5FF;strokeColor=#CBD5E1;align=left;verticalAlign=top;spacing=16;">
+          <mxGeometry x="45" y="868" width="1640" height="100" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="c-model-ports-v1" name="06 — C-model ports and wires">
+    <mxGraphModel page="1" pageWidth="2550" pageHeight="2504" grid="1" gridSize="10" background="#FFFFFF" pageScale="1">
+      <root>
+        <mxCell id="p6_0" />
+        <mxCell id="p6_1" parent="p6_0" />
+        <mxCell id="p6_p6_title" value="&lt;b&gt;C-model ports and wires • exact netlist names&lt;/b&gt;" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;fontFamily=Helvetica;fontSize=15;align=left;verticalAlign=middle;fontSize=27;" vertex="1" parent="p6_1">
+          <mxGeometry x="60" y="30" width="2300" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="p6_p6_sub" value="Top module: Npu • wiring in npu_top.c • each arrow is a typed point-to-point/broadcast connection, not AXI." style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;fontFamily=Helvetica;fontSize=15;align=left;verticalAlign=middle;fontSize=17;" vertex="1" parent="p6_1">
+          <mxGeometry x="60" y="92" width="2300" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p6_p6_controller" value="&lt;b&gt;n-&amp;gt;controller&lt;/b&gt;&lt;br&gt;Controller • controller.h&lt;br&gt;&lt;br&gt;IN: ports.in.memory&lt;br&gt;IN: ports.in.stream&lt;br&gt;&lt;br&gt;OUT: ports.out.control&lt;br&gt;&lt;br&gt;&lt;i&gt;regs: pc / ir / state / step&lt;br&gt;handlers[opcode] → execute()&lt;/i&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;strokeColor=#333333;fillColor=#FFFFFF;spacing=10;align=left;verticalAlign=top;spacing=16;fontSize=16;" vertex="1" parent="p6_1">
+          <mxGeometry x="60" y="270" width="380" height="300" as="geometry" />
+        </mxCell>
+        <mxCell id="p6_p6_mac" value="&lt;b&gt;n-&amp;gt;mac&lt;/b&gt;&lt;br&gt;Mac • mac.h&lt;br&gt;&lt;br&gt;IN: ports.in.control&lt;br&gt;IN: ports.in.response&lt;br&gt;IN: ports.in.forward&lt;br&gt;&lt;br&gt;OUT: ports.out.sums&lt;br&gt;&lt;br&gt;&lt;i&gt;regs.slot[2] • operand[4] / loaded[4]&lt;br&gt;regs.accumulators.value[4][4]&lt;/i&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;strokeColor=#333333;fillColor=#FFFFFF;spacing=10;align=left;verticalAlign=top;spacing=16;fontSize=16;" vertex="1" parent="p6_1">
+          <mxGeometry x="900" y="270" width="500" height="320" as="geometry" />
+        </mxCell>
+        <mxCell id="p6_p6_activation" value="&lt;b&gt;n-&amp;gt;activation&lt;/b&gt;&lt;br&gt;Activation • activation.h&lt;br&gt;&lt;br&gt;IN: ports.in.control&lt;br&gt;IN: ports.in.sums&lt;br&gt;&lt;br&gt;OUT: ports.out.activated&lt;br&gt;&lt;br&gt;&lt;i&gt;Combinational ReLU / bypass&lt;/i&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;strokeColor=#333333;fillColor=#FFFFFF;spacing=10;align=left;verticalAlign=top;spacing=16;fontSize=16;" vertex="1" parent="p6_1">
+          <mxGeometry x="1550" y="270" width="340" height="320" as="geometry" />
+        </mxCell>
+        <mxCell id="p6_p6_scale" value="&lt;b&gt;n-&amp;gt;scale&lt;/b&gt;&lt;br&gt;ScaleClamp • scale_clamp.h&lt;br&gt;&lt;br&gt;IN: ports.in.control&lt;br&gt;IN: ports.in.activated&lt;br&gt;&lt;br&gt;OUT: ports.out.result&lt;br&gt;&lt;br&gt;&lt;i&gt;regs.result • POST_LATENCY 0/1&lt;/i&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;strokeColor=#333333;fillColor=#FFFFFF;spacing=10;align=left;verticalAlign=top;spacing=16;fontSize=16;" vertex="1" parent="p6_1">
+          <mxGeometry x="2070" y="270" width="370" height="320" as="geometry" />
+        </mxCell>
+        <mxCell id="p6_p6_sram" value="&lt;b&gt;n-&amp;gt;sram&lt;/b&gt;&lt;br&gt;Sram • sram.h&lt;br&gt;&lt;br&gt;IN: ports.in.control&lt;br&gt;IN: ports.in.input&lt;br&gt;IN: ports.in.result&lt;br&gt;OUT: ports.out.response&lt;br&gt;&lt;br&gt;&lt;i&gt;regs.memory[SRAM_LINES]&lt;br&gt;regs.response • 1-cycle read&lt;/i&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;strokeColor=#333333;fillColor=#FFFFFF;spacing=10;align=left;verticalAlign=top;spacing=16;fontSize=16;" vertex="1" parent="p6_1">
+          <mxGeometry x="900" y="900" width="500" height="250" as="geometry" />
+        </mxCell>
+        <mxCell id="p6_p6_stream" value="&lt;b&gt;n-&amp;gt;stream&lt;/b&gt;&lt;br&gt;Stream • stream.h&lt;br&gt;&lt;br&gt;IN: ports.in.control / ports.in.response&lt;br&gt;&lt;br&gt;OUT: ports.out.input / ports.out.status&lt;br&gt;&lt;br&gt;&lt;i&gt;Host input / output endpoint&lt;/i&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;strokeColor=#333333;fillColor=#FFFFFF;spacing=10;align=left;verticalAlign=top;spacing=16;fontSize=16;" vertex="1" parent="p6_1">
+          <mxGeometry x="60" y="900" width="380" height="250" as="geometry" />
+        </mxCell>
+        <mxCell id="p6_p6_cmac" value="" style="ellipse;fillColor=#333333;strokeColor=#333333;" vertex="1" parent="p6_1">
+          <mxGeometry x="1147" y="187" width="6" height="6" as="geometry" />
+        </mxCell>
+        <mxCell id="p6_p6_cact" value="" style="ellipse;fillColor=#333333;strokeColor=#333333;" vertex="1" parent="p6_1">
+          <mxGeometry x="1717" y="187" width="6" height="6" as="geometry" />
+        </mxCell>
+        <mxCell id="p6_p6_cscale" value="" style="ellipse;fillColor=#333333;strokeColor=#333333;" vertex="1" parent="p6_1">
+          <mxGeometry x="2252" y="187" width="6" height="6" as="geometry" />
+        </mxCell>
+        <mxCell id="p6_p6_control_up" source="p6_p6_controller" target="p6_p6_cmac" parent="p6_1" edge="1" style="edgeStyle=none;html=1;rounded=0;jumpStyle=arc;jumpSize=8;strokeColor=#333333;strokeWidth=1;dashed=1;endArrow=none;exitX=0.5;exitY=0;entryX=0;entryY=0.5;fontFamily=Helvetica;fontSize=14;labelBackgroundColor=#FFFFFF;" value="" cWire="n-&gt;wires.control">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="250" y="190" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p6_p6_control_rail1" source="p6_p6_cmac" target="p6_p6_cact" parent="p6_1" edge="1" style="edgeStyle=none;html=1;rounded=0;jumpStyle=arc;jumpSize=8;strokeColor=#333333;strokeWidth=1;dashed=1;endArrow=none;exitX=1;exitY=0.5;entryX=0;entryY=0.5;fontFamily=Helvetica;fontSize=14;labelBackgroundColor=#FFFFFF;" value="" cWire="n-&gt;wires.control">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p6_p6_control_rail2" source="p6_p6_cact" target="p6_p6_cscale" parent="p6_1" edge="1" style="edgeStyle=none;html=1;rounded=0;jumpStyle=arc;jumpSize=8;strokeColor=#333333;strokeWidth=1;dashed=1;endArrow=none;exitX=1;exitY=0.5;entryX=0;entryY=0.5;fontFamily=Helvetica;fontSize=14;labelBackgroundColor=#FFFFFF;" value="" cWire="n-&gt;wires.control">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p6_p6_control_mac" source="p6_p6_cmac" target="p6_p6_mac" parent="p6_1" edge="1" style="edgeStyle=none;html=1;rounded=0;jumpStyle=arc;jumpSize=8;strokeColor=#333333;strokeWidth=1;dashed=1;endArrow=classic;exitX=0.5;exitY=1;entryX=0.5;entryY=0;fontFamily=Helvetica;fontSize=14;labelBackgroundColor=#FFFFFF;" value="" cWire="n-&gt;wires.control">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p6_p6_control_activation" source="p6_p6_cact" target="p6_p6_activation" parent="p6_1" edge="1" style="edgeStyle=none;html=1;rounded=0;jumpStyle=arc;jumpSize=8;strokeColor=#333333;strokeWidth=1;dashed=1;endArrow=classic;exitX=0.5;exitY=1;entryX=0.5;entryY=0;fontFamily=Helvetica;fontSize=14;labelBackgroundColor=#FFFFFF;" value="" cWire="n-&gt;wires.control">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p6_p6_control_scale" source="p6_p6_cscale" target="p6_p6_scale" parent="p6_1" edge="1" style="edgeStyle=none;html=1;rounded=0;jumpStyle=arc;jumpSize=8;strokeColor=#333333;strokeWidth=1;dashed=1;endArrow=classic;exitX=0.5;exitY=1;entryX=0.5;entryY=0;fontFamily=Helvetica;fontSize=14;labelBackgroundColor=#FFFFFF;" value="" cWire="n-&gt;wires.control">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p6_p6_control_label" value="[1] n-&gt;wires.control • ControlBus • control signals only" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;fontFamily=Helvetica;fontSize=15;align=left;verticalAlign=middle;align=center;" vertex="1" parent="p6_1">
+          <mxGeometry x="900" y="144" width="1400" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="p6_p6_clow" value="" style="ellipse;fillColor=#333333;strokeColor=#333333;" vertex="1" parent="p6_1">
+          <mxGeometry x="647" y="947" width="6" height="6" as="geometry" />
+        </mxCell>
+        <mxCell id="p6_p6_control_low" source="p6_p6_controller" target="p6_p6_clow" parent="p6_1" edge="1" style="edgeStyle=none;html=1;rounded=0;jumpStyle=arc;jumpSize=8;strokeColor=#333333;strokeWidth=1;dashed=1;endArrow=none;exitX=0.9474;exitY=1;entryX=0.5;entryY=0;fontFamily=Helvetica;fontSize=14;labelBackgroundColor=#FFFFFF;" value="" cWire="n-&gt;wires.control">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="420" y="640" />
+              <mxPoint x="650" y="640" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p6_p6_control_sram" source="p6_p6_clow" target="p6_p6_sram" parent="p6_1" edge="1" style="edgeStyle=none;html=1;rounded=0;jumpStyle=arc;jumpSize=8;strokeColor=#333333;strokeWidth=1;dashed=1;endArrow=classic;exitX=1;exitY=0.5;entryX=0;entryY=0.2;fontFamily=Helvetica;fontSize=14;labelBackgroundColor=#FFFFFF;" value="" cWire="n-&gt;wires.control">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p6_p6_control_stream" source="p6_p6_clow" target="p6_p6_stream" parent="p6_1" edge="1" style="edgeStyle=none;html=1;rounded=0;jumpStyle=arc;jumpSize=8;strokeColor=#333333;strokeWidth=1;dashed=1;endArrow=classic;exitX=0;exitY=0.5;entryX=1;entryY=0.2;fontFamily=Helvetica;fontSize=14;labelBackgroundColor=#FFFFFF;" value="" cWire="n-&gt;wires.control">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p6_p6_control_low_label" value="[1] same control bus" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;fontFamily=Helvetica;fontSize=15;align=left;verticalAlign=middle;align=center;" vertex="1" parent="p6_1">
+          <mxGeometry x="470" y="905" width="380" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="p6_p6_memjoin" value="" style="ellipse;fillColor=#333333;strokeColor=#333333;" vertex="1" parent="p6_1">
+          <mxGeometry x="1097" y="717" width="6" height="6" as="geometry" />
+        </mxCell>
+        <mxCell id="p6_p6_membranch" value="" style="ellipse;fillColor=#333333;strokeColor=#333333;" vertex="1" parent="p6_1">
+          <mxGeometry x="1097" y="777" width="6" height="6" as="geometry" />
+        </mxCell>
+        <mxCell id="p6_p6_memory_out" source="p6_p6_sram" target="p6_p6_membranch" parent="p6_1" edge="1" style="edgeStyle=none;html=1;rounded=0;jumpStyle=arc;jumpSize=8;strokeColor=#333333;strokeWidth=2;dashed=0;endArrow=none;exitX=0.4;exitY=0;entryX=0.5;entryY=1;fontFamily=Helvetica;fontSize=14;labelBackgroundColor=#FFFFFF;" value="" cWire="n-&gt;wires.memory">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p6_p6_memory_up" source="p6_p6_membranch" target="p6_p6_memjoin" parent="p6_1" edge="1" style="edgeStyle=none;html=1;rounded=0;jumpStyle=arc;jumpSize=8;strokeColor=#333333;strokeWidth=2;dashed=0;endArrow=none;exitX=0.5;exitY=0;entryX=0.5;entryY=1;fontFamily=Helvetica;fontSize=14;labelBackgroundColor=#FFFFFF;" value="" cWire="n-&gt;wires.memory">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p6_p6_memmac" value="" style="ellipse;fillColor=#333333;strokeColor=#333333;" vertex="1" parent="p6_1">
+          <mxGeometry x="1037" y="717" width="6" height="6" as="geometry" />
+        </mxCell>
+        <mxCell id="p6_p6_memory_macbranch" source="p6_p6_memjoin" target="p6_p6_memmac" parent="p6_1" edge="1" style="edgeStyle=none;html=1;rounded=0;jumpStyle=arc;jumpSize=8;strokeColor=#333333;strokeWidth=2;dashed=0;endArrow=none;exitX=0;exitY=0.5;entryX=1;entryY=0.5;fontFamily=Helvetica;fontSize=14;labelBackgroundColor=#FFFFFF;" value="" cWire="n-&gt;wires.memory">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p6_p6_memory_mac" source="p6_p6_memmac" target="p6_p6_mac" parent="p6_1" edge="1" style="edgeStyle=none;html=1;rounded=0;jumpStyle=arc;jumpSize=8;strokeColor=#333333;strokeWidth=2;dashed=0;endArrow=classic;exitX=0.5;exitY=0;entryX=0.28;entryY=1;fontFamily=Helvetica;fontSize=14;labelBackgroundColor=#FFFFFF;" value="" cWire="n-&gt;wires.memory">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p6_p6_memory_controller" source="p6_p6_memmac" target="p6_p6_controller" parent="p6_1" edge="1" style="edgeStyle=none;html=1;rounded=0;jumpStyle=arc;jumpSize=8;strokeColor=#333333;strokeWidth=2;dashed=0;endArrow=classic;exitX=0;exitY=0.5;entryX=0.7105;entryY=1;fontFamily=Helvetica;fontSize=14;labelBackgroundColor=#FFFFFF;" value="" cWire="n-&gt;wires.memory">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="330" y="720" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p6_p6_memory_stream" source="p6_p6_membranch" target="p6_p6_stream" parent="p6_1" edge="1" style="edgeStyle=none;html=1;rounded=0;jumpStyle=arc;jumpSize=8;strokeColor=#333333;strokeWidth=2;dashed=0;endArrow=classic;exitX=0;exitY=0.5;entryX=0.6579;entryY=0;fontFamily=Helvetica;fontSize=14;labelBackgroundColor=#FFFFFF;" value="" cWire="n-&gt;wires.memory">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="310" y="780" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p6_p6_memory_label" value="[2] n-&gt;wires.memory • TileSignalBus&lt;br&gt;tile: 128 bits • valid: 1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;fontFamily=Helvetica;fontSize=15;align=left;verticalAlign=middle;" vertex="1" parent="p6_1">
+          <mxGeometry x="1140" y="795" width="650" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="p6_p6_input_sram" source="p6_p6_stream" target="p6_p6_sram" parent="p6_1" edge="1" style="edgeStyle=none;html=1;rounded=0;jumpStyle=arc;jumpSize=8;strokeColor=#333333;strokeWidth=2;dashed=0;endArrow=classic;exitX=1;exitY=0.64;entryX=0;entryY=0.64;fontFamily=Helvetica;fontSize=14;labelBackgroundColor=#FFFFFF;" value="" cWire="n-&gt;wires.input">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p6_p6_input_label" value="[3] n-&gt;wires.input&lt;br&gt;TileSignalBus • 128-bit tile + valid" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;fontFamily=Helvetica;fontSize=15;align=left;verticalAlign=middle;align=center;" vertex="1" parent="p6_1">
+          <mxGeometry x="480" y="1010" width="380" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="p6_p6_status_controller" source="p6_p6_stream" target="p6_p6_controller" parent="p6_1" edge="1" style="edgeStyle=none;html=1;rounded=0;jumpStyle=arc;jumpSize=8;strokeColor=#333333;strokeWidth=1;dashed=1;endArrow=classic;exitX=0.2237;exitY=0;entryX=0.2237;entryY=1;fontFamily=Helvetica;fontSize=14;labelBackgroundColor=#FFFFFF;" value="" cWire="n-&gt;wires.stream_status">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p6_p6_status_label" value="[4] n-&gt;wires.stream_status&lt;br&gt;input_valid / output_ready" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;fontFamily=Helvetica;fontSize=15;align=left;verticalAlign=middle;fontSize=15;" vertex="1" parent="p6_1">
+          <mxGeometry x="165" y="728" width="440" height="48" as="geometry" />
+        </mxCell>
+        <mxCell id="p6_p6_sums_act" source="p6_p6_mac" target="p6_p6_activation" parent="p6_1" edge="1" style="edgeStyle=none;html=1;rounded=0;jumpStyle=arc;jumpSize=8;strokeColor=#333333;strokeWidth=2;dashed=0;endArrow=classic;exitX=1;exitY=0.5;entryX=0;entryY=0.5;fontFamily=Helvetica;fontSize=14;labelBackgroundColor=#FFFFFF;" value="" cWire="n-&gt;wires.sums">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p6_p6_sums_label" value="[5] sums&lt;br&gt;AccSignalBus" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;fontFamily=Helvetica;fontSize=15;align=left;verticalAlign=middle;align=center;fontSize=13;" vertex="1" parent="p6_1">
+          <mxGeometry x="1405" y="370" width="140" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="p6_p6_act_scale" source="p6_p6_activation" target="p6_p6_scale" parent="p6_1" edge="1" style="edgeStyle=none;html=1;rounded=0;jumpStyle=arc;jumpSize=8;strokeColor=#333333;strokeWidth=2;dashed=0;endArrow=classic;exitX=1;exitY=0.5;entryX=0;entryY=0.5;fontFamily=Helvetica;fontSize=14;labelBackgroundColor=#FFFFFF;" value="" cWire="n-&gt;wires.activated">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p6_p6_act_label" value="[6] activated&lt;br&gt;AccSignalBus" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;fontFamily=Helvetica;fontSize=15;align=left;verticalAlign=middle;align=center;fontSize=13;" vertex="1" parent="p6_1">
+          <mxGeometry x="1895" y="370" width="170" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="p6_p6_resultjoin" value="" style="ellipse;fillColor=#333333;strokeColor=#333333;" vertex="1" parent="p6_1">
+          <mxGeometry x="2252" y="677" width="6" height="6" as="geometry" />
+        </mxCell>
+        <mxCell id="p6_p6_result_out" source="p6_p6_scale" target="p6_p6_resultjoin" parent="p6_1" edge="1" style="edgeStyle=none;html=1;rounded=0;jumpStyle=arc;jumpSize=8;strokeColor=#333333;strokeWidth=2;dashed=0;endArrow=none;exitX=0.5;exitY=1;entryX=0.5;entryY=0;fontFamily=Helvetica;fontSize=14;labelBackgroundColor=#FFFFFF;" value="" cWire="n-&gt;wires.result">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p6_p6_result_mac" source="p6_p6_resultjoin" target="p6_p6_mac" parent="p6_1" edge="1" style="edgeStyle=none;html=1;rounded=0;jumpStyle=arc;jumpSize=8;strokeColor=#333333;strokeWidth=2;dashed=0;endArrow=classic;exitX=0;exitY=0.5;entryX=0.84;entryY=1;fontFamily=Helvetica;fontSize=14;labelBackgroundColor=#FFFFFF;" value="" cWire="n-&gt;wires.result">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1320" y="680" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p6_p6_result_sram" source="p6_p6_resultjoin" target="p6_p6_sram" parent="p6_1" edge="1" style="edgeStyle=none;html=1;rounded=0;jumpStyle=arc;jumpSize=8;strokeColor=#333333;strokeWidth=2;dashed=0;endArrow=classic;exitX=0.5;exitY=1;entryX=1;entryY=0.64;fontFamily=Helvetica;fontSize=14;labelBackgroundColor=#FFFFFF;" value="" cWire="n-&gt;wires.result">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="2255" y="1060" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p6_p6_forward_label" value="[7] n-&gt;wires.result • ResultSignalBus • forward_en qualifies capture into slot.X" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;fontFamily=Helvetica;fontSize=15;align=left;verticalAlign=middle;align=center;" vertex="1" parent="p6_1">
+          <mxGeometry x="1430" y="625" width="780" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="p6_p6_result_label" value="[7] same result bus → SRAM write-data mux&lt;br&gt;write_source = WRITE_RESULT" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;fontFamily=Helvetica;fontSize=15;align=left;verticalAlign=middle;align=center;" vertex="1" parent="p6_1">
+          <mxGeometry x="1530" y="983" width="650" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="p6_p6_mux_note" value="SRAM write-data mux is inside sram.c:&lt;br&gt;WRITE_STREAM selects ports.in.input; WRITE_RESULT selects ports.in.result." style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;strokeColor=#333333;fillColor=#FFFFFF;spacing=10;fillColor=#F1F5FF;strokeColor=#CBD5E1;align=left;verticalAlign=top;spacing=14;fontSize=15;" vertex="1" parent="p6_1">
+          <mxGeometry x="1510" y="1110" width="930" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="p6_p6_table_title" value="&lt;b&gt;Exact producer → bus → consumers&lt;/b&gt; • n is the Npu instance; in/out are from the owning block’s perspective." style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;fontFamily=Helvetica;fontSize=15;align=left;verticalAlign=middle;fontSize=19;" vertex="1" parent="p6_1">
+          <mxGeometry x="60" y="1220" width="2380" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="p6_p6_head0" value="&lt;b&gt;BUS INSTANCE / PAYLOAD TYPE&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;strokeColor=#333333;fillColor=#FFFFFF;spacing=10;fillColor=#F1F5FF;strokeColor=#CBD5E1;align=left;verticalAlign=top;spacing=14;spacing=10;fontSize=15;" vertex="1" parent="p6_1">
+          <mxGeometry x="60" y="1280" width="530" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="p6_p6_head1" value="&lt;b&gt;PRODUCER PORT&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;strokeColor=#333333;fillColor=#FFFFFF;spacing=10;fillColor=#F1F5FF;strokeColor=#CBD5E1;align=left;verticalAlign=top;spacing=14;spacing=10;fontSize=15;" vertex="1" parent="p6_1">
+          <mxGeometry x="590" y="1280" width="670" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="p6_p6_head2" value="&lt;b&gt;CONSUMER PORTS&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;strokeColor=#333333;fillColor=#FFFFFF;spacing=10;fillColor=#F1F5FF;strokeColor=#CBD5E1;align=left;verticalAlign=top;spacing=14;spacing=10;fontSize=15;" vertex="1" parent="p6_1">
+          <mxGeometry x="1260" y="1280" width="1180" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="p6_p6_net_control_0" value="&lt;b&gt;[1] n-&amp;gt;wires.control&lt;/b&gt;&lt;br&gt;ControlBus&lt;br&gt;debug: controller.control" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;strokeColor=#333333;fillColor=#FFFFFF;spacing=10;align=left;fontSize=15;spacing=10;" vertex="1" parent="p6_1">
+          <mxGeometry x="60" y="1322" width="530" height="144" as="geometry" />
+        </mxCell>
+        <mxCell id="p6_p6_net_control_1" value="n-&amp;gt;controller.ports.out.control" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;strokeColor=#333333;fillColor=#FFFFFF;spacing=10;align=left;fontSize=15;spacing=10;" vertex="1" parent="p6_1">
+          <mxGeometry x="590" y="1322" width="670" height="144" as="geometry" />
+        </mxCell>
+        <mxCell id="p6_p6_net_control_2" value="n-&amp;gt;sram.ports.in.control&lt;br&gt;n-&amp;gt;stream.ports.in.control&lt;br&gt;n-&amp;gt;mac.ports.in.control&lt;br&gt;n-&amp;gt;activation.ports.in.control&lt;br&gt;n-&amp;gt;scale.ports.in.control" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;strokeColor=#333333;fillColor=#FFFFFF;spacing=10;align=left;fontSize=15;spacing=10;" vertex="1" parent="p6_1">
+          <mxGeometry x="1260" y="1322" width="1180" height="144" as="geometry" />
+        </mxCell>
+        <mxCell id="p6_p6_net_memory_0" value="&lt;b&gt;[2] n-&amp;gt;wires.memory&lt;/b&gt;&lt;br&gt;TileSignalBus&lt;br&gt;debug: sram.response" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;strokeColor=#333333;fillColor=#FFFFFF;spacing=10;align=left;fontSize=15;spacing=10;" vertex="1" parent="p6_1">
+          <mxGeometry x="60" y="1466" width="530" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="p6_p6_net_memory_1" value="n-&amp;gt;sram.ports.out.response" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;strokeColor=#333333;fillColor=#FFFFFF;spacing=10;align=left;fontSize=15;spacing=10;" vertex="1" parent="p6_1">
+          <mxGeometry x="590" y="1466" width="670" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="p6_p6_net_memory_2" value="n-&amp;gt;controller.ports.in.memory&lt;br&gt;n-&amp;gt;stream.ports.in.response&lt;br&gt;n-&amp;gt;mac.ports.in.response" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;strokeColor=#333333;fillColor=#FFFFFF;spacing=10;align=left;fontSize=15;spacing=10;" vertex="1" parent="p6_1">
+          <mxGeometry x="1260" y="1466" width="1180" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="p6_p6_net_input_0" value="&lt;b&gt;[3] n-&amp;gt;wires.input&lt;/b&gt;&lt;br&gt;TileSignalBus&lt;br&gt;debug: stream.input" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;strokeColor=#333333;fillColor=#FFFFFF;spacing=10;align=left;fontSize=15;spacing=10;" vertex="1" parent="p6_1">
+          <mxGeometry x="60" y="1566" width="530" height="78" as="geometry" />
+        </mxCell>
+        <mxCell id="p6_p6_net_input_1" value="n-&amp;gt;stream.ports.out.input" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;strokeColor=#333333;fillColor=#FFFFFF;spacing=10;align=left;fontSize=15;spacing=10;" vertex="1" parent="p6_1">
+          <mxGeometry x="590" y="1566" width="670" height="78" as="geometry" />
+        </mxCell>
+        <mxCell id="p6_p6_net_input_2" value="n-&amp;gt;sram.ports.in.input" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;strokeColor=#333333;fillColor=#FFFFFF;spacing=10;align=left;fontSize=15;spacing=10;" vertex="1" parent="p6_1">
+          <mxGeometry x="1260" y="1566" width="1180" height="78" as="geometry" />
+        </mxCell>
+        <mxCell id="p6_p6_net_stream_status_0" value="&lt;b&gt;[4] n-&amp;gt;wires.stream_status&lt;/b&gt;&lt;br&gt;StreamStatusBus&lt;br&gt;debug: stream.status" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;strokeColor=#333333;fillColor=#FFFFFF;spacing=10;align=left;fontSize=15;spacing=10;" vertex="1" parent="p6_1">
+          <mxGeometry x="60" y="1644" width="530" height="78" as="geometry" />
+        </mxCell>
+        <mxCell id="p6_p6_net_stream_status_1" value="n-&amp;gt;stream.ports.out.status" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;strokeColor=#333333;fillColor=#FFFFFF;spacing=10;align=left;fontSize=15;spacing=10;" vertex="1" parent="p6_1">
+          <mxGeometry x="590" y="1644" width="670" height="78" as="geometry" />
+        </mxCell>
+        <mxCell id="p6_p6_net_stream_status_2" value="n-&amp;gt;controller.ports.in.stream" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;strokeColor=#333333;fillColor=#FFFFFF;spacing=10;align=left;fontSize=15;spacing=10;" vertex="1" parent="p6_1">
+          <mxGeometry x="1260" y="1644" width="1180" height="78" as="geometry" />
+        </mxCell>
+        <mxCell id="p6_p6_net_sums_0" value="&lt;b&gt;[5] n-&amp;gt;wires.sums&lt;/b&gt;&lt;br&gt;AccSignalBus&lt;br&gt;debug: mac.accumulators" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;strokeColor=#333333;fillColor=#FFFFFF;spacing=10;align=left;fontSize=15;spacing=10;" vertex="1" parent="p6_1">
+          <mxGeometry x="60" y="1722" width="530" height="78" as="geometry" />
+        </mxCell>
+        <mxCell id="p6_p6_net_sums_1" value="n-&amp;gt;mac.ports.out.sums" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;strokeColor=#333333;fillColor=#FFFFFF;spacing=10;align=left;fontSize=15;spacing=10;" vertex="1" parent="p6_1">
+          <mxGeometry x="590" y="1722" width="670" height="78" as="geometry" />
+        </mxCell>
+        <mxCell id="p6_p6_net_sums_2" value="n-&amp;gt;activation.ports.in.sums" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;strokeColor=#333333;fillColor=#FFFFFF;spacing=10;align=left;fontSize=15;spacing=10;" vertex="1" parent="p6_1">
+          <mxGeometry x="1260" y="1722" width="1180" height="78" as="geometry" />
+        </mxCell>
+        <mxCell id="p6_p6_net_activated_0" value="&lt;b&gt;[6] n-&amp;gt;wires.activated&lt;/b&gt;&lt;br&gt;AccSignalBus&lt;br&gt;debug: activation.result" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;strokeColor=#333333;fillColor=#FFFFFF;spacing=10;align=left;fontSize=15;spacing=10;" vertex="1" parent="p6_1">
+          <mxGeometry x="60" y="1800" width="530" height="78" as="geometry" />
+        </mxCell>
+        <mxCell id="p6_p6_net_activated_1" value="n-&amp;gt;activation.ports.out.activated" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;strokeColor=#333333;fillColor=#FFFFFF;spacing=10;align=left;fontSize=15;spacing=10;" vertex="1" parent="p6_1">
+          <mxGeometry x="590" y="1800" width="670" height="78" as="geometry" />
+        </mxCell>
+        <mxCell id="p6_p6_net_activated_2" value="n-&amp;gt;scale.ports.in.activated" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;strokeColor=#333333;fillColor=#FFFFFF;spacing=10;align=left;fontSize=15;spacing=10;" vertex="1" parent="p6_1">
+          <mxGeometry x="1260" y="1800" width="1180" height="78" as="geometry" />
+        </mxCell>
+        <mxCell id="p6_p6_net_result_0" value="&lt;b&gt;[7] n-&amp;gt;wires.result&lt;/b&gt;&lt;br&gt;ResultSignalBus&lt;br&gt;debug: scale.result" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;strokeColor=#333333;fillColor=#FFFFFF;spacing=10;align=left;fontSize=15;spacing=10;" vertex="1" parent="p6_1">
+          <mxGeometry x="60" y="1878" width="530" height="78" as="geometry" />
+        </mxCell>
+        <mxCell id="p6_p6_net_result_1" value="n-&amp;gt;scale.ports.out.result" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;strokeColor=#333333;fillColor=#FFFFFF;spacing=10;align=left;fontSize=15;spacing=10;" vertex="1" parent="p6_1">
+          <mxGeometry x="590" y="1878" width="670" height="78" as="geometry" />
+        </mxCell>
+        <mxCell id="p6_p6_net_result_2" value="n-&amp;gt;sram.ports.in.result&lt;br&gt;n-&amp;gt;mac.ports.in.forward" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;strokeColor=#333333;fillColor=#FFFFFF;spacing=10;align=left;fontSize=15;spacing=10;" vertex="1" parent="p6_1">
+          <mxGeometry x="1260" y="1878" width="1180" height="78" as="geometry" />
+        </mxCell>
+        <mxCell id="p6_p6_contract_title" value="&lt;b&gt;Payload fields • exact names from signals.h / datapath.h&lt;/b&gt;" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;fontFamily=Helvetica;fontSize=15;align=left;verticalAlign=middle;fontSize=20;" vertex="1" parent="p6_1">
+          <mxGeometry x="60" y="1984" width="2380" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p6_p6_control_fields" value="&lt;b&gt;Control • controller output&lt;/b&gt;&lt;br&gt;&lt;br&gt;bool: rd_en, read_consume, wr_en,&lt;br&gt;latch_en, compute_en, accumulate,&lt;br&gt;post_en, forward_en, input_pop, output_push&lt;br&gt;&lt;br&gt;uint32_t: rd_addr, wr_addr, pc&lt;br&gt;uint16_t: byte_enable&lt;br&gt;WriteSource: write_source&lt;br&gt;&lt;br&gt;unsigned: latch_slot, latch_field, slot, k,&lt;br&gt;k_count, neurons, batch, forward_slot" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;strokeColor=#333333;fillColor=#FFFFFF;spacing=10;fillColor=#F1F5FF;strokeColor=#CBD5E1;align=left;verticalAlign=top;spacing=14;fontSize=16;" vertex="1" parent="p6_1">
+          <mxGeometry x="60" y="2034" width="765" height="330" as="geometry" />
+        </mxCell>
+        <mxCell id="p6_p6_data_fields" value="&lt;b&gt;Data buses • payload bits + sidebands&lt;/b&gt;&lt;br&gt;&lt;br&gt;TileSignal: tile (Line128), valid&lt;br&gt;ResultSignal: tile (Line128), valid,&lt;br&gt;neurons, batch&lt;br&gt;&lt;br&gt;AccSignal: tile (TileSums), config (Line128),&lt;br&gt;valid, neurons, batch&lt;br&gt;→ 512 sum bits + 128 CFG bits + qualifiers&lt;br&gt;&lt;br&gt;StreamStatus: input_valid, output_ready&lt;br&gt;&lt;br&gt;Line128: lane[4] (uint32_t)&lt;br&gt;TileSums: value[4][4] (int32_t)" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;strokeColor=#333333;fillColor=#FFFFFF;spacing=10;fillColor=#F1F5FF;strokeColor=#CBD5E1;align=left;verticalAlign=top;spacing=14;fontSize=16;" vertex="1" parent="p6_1">
+          <mxGeometry x="855" y="2034" width="765" height="330" as="geometry" />
+        </mxCell>
+        <mxCell id="p6_p6_phase_fields" value="&lt;b&gt;One simulated cycle • framework_step()&lt;/b&gt;&lt;br&gt;&lt;br&gt;PUBLISH: SRAM response + stream signals&lt;br&gt;EVAL: controller → MAC → activation → scale&lt;br&gt;CHECK: all transfers and numerical checks&lt;br&gt;CLOCK: each block updates its own registers&lt;br&gt;&lt;br&gt;Registration order: controller, sram, stream,&lt;br&gt;mac, activation, scale&lt;br&gt;&lt;br&gt;Internal regs are not buses. C unsigned fields&lt;br&gt;are not fixed-width RTL declarations.&lt;br&gt;Dashed wires = controls/status; solid = data." style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;strokeColor=#333333;fillColor=#FFFFFF;spacing=10;fillColor=#F1F5FF;strokeColor=#CBD5E1;align=left;verticalAlign=top;spacing=14;fontSize=16;" vertex="1" parent="p6_1">
+          <mxGeometry x="1650" y="2034" width="790" height="330" as="geometry" />
+        </mxCell>
+        <mxCell id="p6_p6_source_note" value="&lt;b&gt;Scope:&lt;/b&gt; port names and connections verified against the supplied c-model.zip. SRAM capacity uses the agreed 1 MiB revision; the saved source still has the earlier constants.&lt;br&gt;Future SoC slave interface / IRQ / MMIO are not implemented here. This page describes the C netlist, not a synthesized RTL pinout." style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;strokeColor=#333333;fillColor=#FFFFFF;spacing=10;fillColor=#F1F5FF;strokeColor=#CBD5E1;align=left;verticalAlign=top;spacing=14;fontSize=15;" vertex="1" parent="p6_1">
+          <mxGeometry x="60" y="2384" width="2380" height="82" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
