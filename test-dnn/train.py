@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Train a real 4->8->8->2 network and export compiler inputs.
+"""Train a real 4->100->100->1 network and export compiler inputs.
 
 From the repository root:
-    python3 test-dnn/train.py
+    python3 test-dnn-large/train.py
 Dependencies: numpy, scikit-learn, torch, onnx.
 """
 import argparse
@@ -19,12 +19,12 @@ import torch
 from torch import nn
 
 
-class Net4882(nn.Module):
+class Net41001001(nn.Module):
     def __init__(self):
         super().__init__()
-        self.fc1 = nn.Linear(4, 8)
-        self.fc2 = nn.Linear(8, 8)
-        self.fc3 = nn.Linear(8, 2)
+        self.fc1 = nn.Linear(4, 100)
+        self.fc2 = nn.Linear(100, 100)
+        self.fc3 = nn.Linear(100, 1)
 
     def forward(self, x):
         x = torch.relu(self.fc1(x))
@@ -60,14 +60,14 @@ def main():
     train_x = (scaler.transform(train_raw) * gain).astype(np.float32)
     test_x = (scaler.transform(test_raw) * gain).astype(np.float32)
 
-    # 2. Two hidden layers span multiple NPU tiles; one logit per target class.
-    model = Net4882()
+    # 2. Two 100-neuron ReLU layers and one binary-classification logit.
+    model = Net41001001()
     optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
-    criterion = nn.CrossEntropyLoss()
+    criterion = nn.BCEWithLogitsLoss()
     model.train()
     for epoch in range(args.epochs):
         optimizer.zero_grad()
-        loss = criterion(model(torch.from_numpy(train_x)), torch.from_numpy(train_y))
+        loss = criterion(model(torch.from_numpy(train_x)), torch.from_numpy(train_y.astype(np.float32)).reshape(-1, 1))
         loss.backward()
         optimizer.step()
         if (epoch + 1) % 50 == 0 or epoch + 1 == args.epochs:
@@ -108,9 +108,9 @@ def main():
         "standard_scaler_scale": scaler.scale_.tolist(), "feature_gain": gain,
         "input_formula": "((raw_features - mean) / scale) * feature_gain",
         "class_names": data.target_names.tolist(),
-        "output_note": "Two logits in class_names order; use argmax for the predicted class."})
+        "output_note": "One logit for class 1 (benign): logit >= 0 predicts benign, otherwise malignant. Sigmoid is host-side only."})
 
-    accuracy = float(np.mean(float_outputs.argmax(1) == test_y))
+    accuracy = float(np.mean((float_outputs[:, 0] >= 0).astype(np.int64) == test_y))
     print(f"Float test accuracy: {accuracy:.2%}")
     print(f"Artifacts: {out}")
 
