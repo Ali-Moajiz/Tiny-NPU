@@ -38,14 +38,14 @@ main() {
     "$python_bin" -m pip install -r "$project_root/requirements.txt"
 
     printf '\n[2/6] Train and export the 4 -> 100 -> 100 -> 1 model\n'
-    "$python_bin" test-dnn-large/train.py
+    "$python_bin" test-dnn/train.py
 
     printf '\n[3/6] Rebuild the compiler executable\n'
     make -C compiler binary PYTHON="$python_bin"
 
     printf '\n[4/6] Compile the trained ONNX model (batch 4)\n'
-    ./compiler/bin/tiny-npu-compiler test-dnn-large/artifacts/model.onnx \
-        --calibration test-dnn-large/artifacts/model.calibration.npy \
+    ./compiler/bin/tiny-npu-compiler test-dnn/artifacts/model.onnx \
+        --calibration test-dnn/artifacts/model.calibration.npy \
         --out output-large --batch 4 --debug
 
     printf '\n[5/6] Build the C model with TB=1\n'
