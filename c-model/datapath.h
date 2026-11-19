@@ -16,12 +16,8 @@
 #define CONFIG_BASE 0xF0000u
 #define CONFIG_END 0xF1000u
 #define ENTRY_PC 0xF1000u
-#ifndef POST_LATENCY
-#define POST_LATENCY 1
-#endif
-#if POST_LATENCY != 0 && POST_LATENCY != 1
-#error POST_LATENCY must be 0 or 1
-#endif
+/* One registered activation stage and one registered scaling stage. */
+#define POST_PIPELINE_STAGES 2u
 /* lane[0] is the least significant word, independent of host endianness. */
 typedef struct
 {
@@ -53,7 +49,7 @@ typedef struct
     bool latch_en;
     unsigned latch_slot, latch_field;
     bool compute_en, accumulate, post_en, forward_en;
-    unsigned slot, k, k_count, neurons, batch, forward_slot;
+    unsigned slot, k, k_count, neurons, batch, forward_slot, post_col;
     bool input_pop, output_push;
     uint32_t pc;
 } Control;

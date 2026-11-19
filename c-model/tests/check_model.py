@@ -55,8 +55,8 @@ def rounded(value, m, shift, relu):
 
 
 class Checks:
-    def __init__(self, binary, post, root):
-        self.binary, self.post, self.root = binary, post, root
+    def __init__(self, binary, root):
+        self.binary, self.root = binary, root
         self.count = 0
 
     def run(self, mem, data=b'', batch=4, extra=(), failure=None):
@@ -73,7 +73,7 @@ class Checks:
         assert result.returncode == 0, result.stderr
         return (self.root/'output.bin').read_bytes(), result.stdout
 
-    def tile(self, batch, neurons, k, retain=False, forward=False, relu=False):
+    def tile(self, batch, neurons, k, retain=False, forward=False, relu=False, store=True):
         rng = random.Random(42+batch+neurons+k)
         x = [[rng.randrange(-128,128) for _ in range(k)] for _ in range(batch)]
         w = [[rng.randrange(-16,17) for _ in range(k)] for _ in range(neurons)]
@@ -86,7 +86,7 @@ class Checks:
         if retain:
             # Change W while retaining the current accumulator file.
             program += [instruction(8,0x10,1,16),instruction(2,dims=dims,flags=2)]
-        program.append(instruction(3,dest=(X+16),dims=neurons | batch << 4,flags=4))
+        program.append(instruction(3,dest=(X+16) if store else 0,dims=neurons | batch << 4,flags=4 if store else 0))
         if forward:
             program += [instruction(4,dest=1,dims=neurons | batch << 4),
                 instruction(8,(B+32),6,16),instruction(8,(CFG+16),7,16),instruction(8,0x20,5,16),
@@ -108,14 +108,14 @@ class Checks:
         post_count=2 if forward else 1
         loads=4+int(retain)+(3 if forward else 0)
         # Each instruction: fetch request + response + decode + update = 4;
-        # Dispatch costs: load=2, MAC=K, post=1+latency, stream in=1,
+        # Dispatch costs: load=2, MAC=K, post=N+2+store, stream in=1,
         # stream out=2, forward/halt=1.
-        cycles=4*len(program)+loads*2+compute+post_count*(1+self.post)+1+2+int(forward)+1
+        cycles=4*len(program)+loads*2+compute+post_count*(neurons+2)+int(store)+int(forward)+1+2+int(forward)+1
         assert metric(log,'cycles')==cycles,(metric(log,'cycles'),cycles)
         assert metric(log,'useful_macs')==compute*neurons*batch
         assert metric(log,'compute_cycles')==compute
         assert metric(log,'sram_reads')==len(program)+loads+1
-        assert metric(log,'sram_writes')==1+post_count
+        assert metric(log,'sram_writes')==1+int(store)+int(forward)
         assert metric(log,'bus_stall_cycles')==0
         return mem,pack(x),actual,cycles
 
@@ -124,6 +124,7 @@ class Checks:
             for n,k in ((4,4),(2,3),(1,1)):
                 self.tile(batch,n,k,retain=True,relu=n!=2)
             self.tile(batch,3,4,forward=True)
+            self.tile(batch,3,4,forward=True,store=False)
         mem,data,expected,cycles=self.tile(4,4,4,retain=True)
         actual,log=self.run(mem,data,extra=('--input-delay','60','--output-delay','300'))
         assert actual==expected
@@ -147,7 +148,7 @@ class Checks:
         self.run(image([instruction(15)]),bytes(16),failure='unused input')
         bad=bytearray(mem);bad[CFG:(CFG+4)]=bytes(4)
         self.run(bad,data,failure='invalid operands, config')
-        for config in ((0x80000000,7,1,0),(3,63,1,0),(3,7,2,0),(3,7,1,1)):
+        for config in ((0x80000000,7,1,0),(3,63,1,0),(3,7,4,0),(3,7,2,32),(3,7,3,0),(3,7,3,0x80000000),(3,7,1,1)):
             bad=bytearray(mem);bad[CFG:CFG+16]=struct.pack('<4I',*config)
             self.run(bad,data,failure='invalid operands, config')
         bad=bytearray(mem);bad[B:(B+16)]=struct.pack('<4i',*([2**31-1]*4));bad[:16]=bytes([127]*16)
@@ -159,6 +160,43 @@ class Checks:
             p=subprocess.run([str(self.binary),'--sram',str(self.root/'bad.hex'),'--input-bin',str(self.root/'input.bin')],capture_output=True,text=True)
             assert p.returncode and 'invalid SRAM hex' in p.stderr
             self.count+=1
+
+    def activations(self):
+        # Bias-only dot product isolates configuration decoding, activation,
+        # scaling and byte packing. Fraction gives independent ties-even math.
+        bias=[-7,-5,-3,12]
+        for mode,param in ((0,0),(1,0),(2,1),(2,31),(3,6)):
+            p=[instruction(1,dest=X,dims=16)]
+            p += [instruction(8,addr,field,16) for addr,field in ((B,2),(CFG,3),(0,1),(X,0))]
+            p += [instruction(2,dims=0x144),instruction(3,dest=X+16,dims=0x44,flags=4),
+                  instruction(5,src=X+16,dims=16),instruction(15)]
+            mem=image(p);mem[B:B+16]=struct.pack('<4i',*bias)
+            mem[CFG:CFG+16]=struct.pack('<4I',3,1,mode,param)
+            values=[x if mode==0 else max(0,x) if mode==1 else
+                    round(Fraction(x,1<<param)) if mode==2 and x<0 else
+                    x if mode==2 else min(param,max(0,x)) for x in bias]
+            wanted=[max(-128,min(127,round(Fraction(x*3,2)))) for x in values]
+            actual,_=self.run(mem,bytes(16))
+            assert actual==pack([wanted]*4),(mode,param,actual,wanted)
+
+    def golden_pipeline(self):
+        mem,data,_,_=self.tile(4,4,4)
+        _,log=self.run(mem,data)
+        if 'COMPUTE' not in log: return  # LOG=none; C tests still check edges.
+        def events(action):
+            return [(int(c),text) for c,text in re.findall(
+                r'\[cycle=(\d+)\] \[FLOW\] \[[^]]+\] '+action+r'\s+([^\n]+)',log)]
+        # Hand-checked nine-instruction program: stream(5), loads(24),
+        # MAC(8), POST(11), stream store(6), HALT(5) = 59 clocks.
+        assert [c for c,_ in events('COMPUTE')]==[33,34,35,36]
+        assert [c for c,_ in events('READOUT')]==[41,42,43,44]
+        assert [c for c,_ in events('ACT')]==[c for c in range(41,45) for _ in range(4)]
+        assert [c for c,_ in events('SCALE')]==[c for c in range(42,46) for _ in range(4)]
+        assert [c for c,_ in events('PACK')]==[43,44,45,46]
+        assert [c for c,_ in events('RESULT')]==[46]
+        assert [c for c,t in events('WRITE') if 'source=post' in t]==[47]
+        assert metric(log,'cycles')==59
+        print('Golden batch-4 trace: MAC 33..36; readout 41..44; ACT/SCALE/PACK overlap; store 47; HALT 59')
 
     def loader(self, checker):
         # Every byte, including 0xFFFF0, must load in low-address/rightmost order.
@@ -234,33 +272,21 @@ class Checks:
                         for r,row in enumerate(step['accumulators']):
                             for v,value in enumerate(row): expected.append((pc,step['local_k'],r,v,value))
                     assert [(int(p,16),int(k),int(r),int(v),int(a)) for p,k,r,v,a in observed]==expected
-                    dispatch=sum((2 if i.op in (5,8) else (i.dims>>8)&15 if i.op==2 else 1+self.post if i.op==3 else 1)
+                    dispatch=sum((2 if i.op in (5,8) else (i.dims>>8)&15 if i.op==2 else (i.dims&15)+2+bool(i.flags&4) if i.op==3 else 1)
                                  for i in compilation.instructions)
                     assert metric(log,'cycles')==4*len(compilation.instructions)+dispatch
-                    if baseline and shape!=(4,100,100,1):
-                        # Run exactly the same program in the pre-change model,
-                        # translating addresses only. Compare outputs and timing.
-                        old_regions={'weights':(0,0x2000),'activations':(0x2000,0x3000),
-                                     'bias':(0x3000,0x3800),'config':(0x3800,0x3900)}
-                        old=bytearray(0x4000)
-                        for region,(start,end) in old_regions.items():
-                            new=REGIONS[region][0];old[start:end]=memory[new:new+end-start]
-                        for index,ins in enumerate(compilation.instructions):
-                            src,dest=ins.src,ins.dest
-                            if ins.op==Op.LOAD_OPERAND:
-                                region=('activations','weights','bias','config')[dest&3]
-                                src+=old_regions[region][0]-REGIONS[region][0]
-                            if ins.op==Op.STREAM_STORE: src+=0x2000-REGIONS['activations'][0]
-                            if ins.op==Op.STREAM_LOAD or (ins.op==Op.POST_PROC and ins.flags&4):
-                                dest+=0x2000-REGIONS['activations'][0]
-                            old[0x3900+16*index:0x3910+16*index]=instruction(int(ins.op),src,dest,ins.dims,ins.flags)
+                    if baseline:
+                        # Same 1 MiB image on the pre-PE model: compare numerics,
+                        # architectural work and the analytically expected cycle delta.
                         current=self.binary
                         try:
-                            self.binary=baseline.resolve();old_output,old_log=self.run(old,data,batch)
+                            self.binary=baseline.resolve();old_output,old_log=self.run(memory,data,batch)
                         finally: self.binary=current
                         assert old_output==actual
-                        for name in ('cycles','instructions','useful_macs','compute_cycles','bus_stall_cycles','sram_reads','sram_writes'):
+                        for name in ('instructions','useful_macs','compute_cycles','bus_stall_cycles','sram_reads','sram_writes'):
                             assert metric(log,name)==metric(old_log,name),(shape,batch,name)
+                        delta=sum((i.dims&15)+2+bool(i.flags&4)-2 for i in compilation.instructions if i.op==3)
+                        assert metric(log,'cycles')-metric(old_log,'cycles')==delta
                     if shape==(4,8,8,2) and batch==4 and not forwarding:
                         print('Compiler 4->8->8->2:',re.search(r'METRICS.*',log).group())
         print('Compiler integration: final output, independent tensor oracle, every PE accumulator and cycle formulas passed')
@@ -268,13 +294,13 @@ class Checks:
 
 def main():
     p=argparse.ArgumentParser();p.add_argument('--binary',type=Path,required=True)
-    p.add_argument('--post-latency',type=int,default=1,choices=(0,1));p.add_argument('--compiler',type=Path)
+    p.add_argument('--compiler',type=Path)
     p.add_argument('--loader-checker',type=Path);p.add_argument('--baseline-binary',type=Path)
     args=p.parse_args()
     with tempfile.TemporaryDirectory(prefix='tiny-npu-check-') as temporary:
-        checks=Checks(args.binary.resolve(),args.post_latency,Path(temporary));checks.all()
+        checks=Checks(args.binary.resolve(),Path(temporary));checks.all();checks.activations();checks.golden_pipeline()
         if args.loader_checker: checks.loader(args.loader_checker.resolve())
         if args.compiler: checks.compiler(args.compiler,args.baseline_binary)
-        print(f'{checks.count} model checks passed (POST_LATENCY={args.post_latency})')
+        print(f'{checks.count} model checks passed (registered PE pipeline)')
 
 if __name__=='__main__': main()

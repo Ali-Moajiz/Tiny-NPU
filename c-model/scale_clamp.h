@@ -1,22 +1,26 @@
 #ifndef SCALE_CLAMP_H
 #define SCALE_CLAMP_H
-#include "framework.h"
-#include "signals.h"
-
-typedef struct { ResultSignal result; } ScaleClampRegisters;
+#include "scale_pe.h"
+typedef struct {
+    ResultSignal result;
+    bool collecting;
+    uint32_t pc;
+    unsigned neurons, batch, next_column;
+    Line128 config;
+} ScaleClampRegisters;
 typedef struct {
     struct {
         const ControlBus *control;
-        const AccSignalBus *activated;
+        const AccLaneBus *lane[ARRAY_SIZE];
     } in;
     struct { ResultSignalBus *result; } out;
 } ScaleClampPorts;
-
 typedef struct {
     ScaleClampRegisters regs;
     ScaleClampPorts ports;
-    ResultSignal evaluated; /* Combinational result before capture. */
+    ScalePe lane[ARRAY_SIZE];
+    ByteLaneBus scaled[ARRAY_SIZE];
+    struct { ByteLane lane[ARRAY_SIZE]; bool capture; } comb;
 } ScaleClamp;
-int8_t scale_clamp_value(int32_t value, int32_t multiplier, unsigned shift);
 extern const BlockOps scale_clamp_ops;
 #endif

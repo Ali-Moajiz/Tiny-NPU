@@ -101,12 +101,16 @@ static ExecStatus post_proc(const Controller *c, const ControllerInputs *in, Con
     tile_control(c, out);
     if (!batch_matches(c, *out))
         return EXEC_FAULT;
-    out->post_en = c->regs.step == 0;
-#if POST_LATENCY == 1
-    if (!c->regs.step)
+    /* Read one neuron column per clock into the four activation lanes.
+     * Drain activation + scaling before the packer's last capture. A store
+     * sees that registered tile on the following clock. */
+    out->post_en = c->regs.step < out->neurons;
+    out->post_col = c->regs.step;
+    unsigned last_capture = out->neurons + POST_PIPELINE_STAGES - 1;
+    bool store = (c->regs.instruction.flags & 4) != 0;
+    if (c->regs.step < last_capture + (unsigned)store)
         return EXEC_PROGRESS;
-#endif
-    if (c->regs.instruction.flags & 4)
+    if (store)
     {
         out->wr_en = true;
         out->wr_addr = c->regs.instruction.dest;

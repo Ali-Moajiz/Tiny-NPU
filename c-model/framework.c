@@ -1,5 +1,17 @@
 #include "framework.h"
 
+bool framework_register(Block *blocks, size_t *count, size_t capacity,
+                        void *instance, const BlockOps *ops)
+{
+    if (!blocks || !count || !instance || !ops || *count >= capacity)
+        return false;
+    for (size_t i = 0; i < *count; i++)
+        if (blocks[i].instance == instance)
+            return false;
+    blocks[(*count)++] = (Block){instance, ops};
+    return true;
+}
+
 bool framework_step(BusContext *ctx, const Block *blocks, size_t count, uint64_t cycle)
 {
     ctx->cycle = cycle;
