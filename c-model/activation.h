@@ -1,17 +1,11 @@
 #ifndef ACTIVATION_H
 #define ACTIVATION_H
-#include "framework.h"
-#include "signals.h"
-
+#include "activation_pe.h"
 typedef struct {
-    struct {
-        const ControlBus *control;
-        const AccSignalBus *sums;
-    } in;
-    struct { AccSignalBus *activated; } out;
+    struct { const AccLaneBus *lane[ARRAY_SIZE]; } in;
+    struct { AccLaneBus *lane[ARRAY_SIZE]; } out;
 } ActivationPorts;
-
-/* Purely combinational: no architectural registers are needed here. */
-typedef struct { ActivationPorts ports; } Activation;
-extern const BlockOps activation_ops;
+/* Bank container; each lane owns its actual register and callbacks. */
+typedef struct { ActivationPorts ports; ActivationPe lane[ARRAY_SIZE]; } Activation;
+void activation_init(Activation *);
 #endif

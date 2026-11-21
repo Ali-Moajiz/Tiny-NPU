@@ -76,9 +76,9 @@ static void clock_controller(void *instance, uint64_t cycle)
                StreamStatus_read(c->ports.in.stream).input_valid, StreamStatus_read(c->ports.in.stream).output_ready);
         printf("  rd=%u rd_addr=0x%05X consume=%u wr=%u wr_addr=0x%05X byte_en=%04X source=%u\n",
                ctrl.rd_en, ctrl.rd_addr, ctrl.read_consume, ctrl.wr_en, ctrl.wr_addr, ctrl.byte_enable, ctrl.write_source);
-        printf("  latch=%u slot=%u field=%u compute=%u k=%u/%u N=%u V=%u accumulate=%u post=%u forward=%u target=%u input_pop=%u output_push=%u\n",
+        printf("  latch=%u slot=%u field=%u compute=%u k=%u/%u N=%u V=%u accumulate=%u post=%u column=%u forward=%u target=%u input_pop=%u output_push=%u\n",
                ctrl.latch_en, ctrl.latch_slot, ctrl.latch_field, ctrl.compute_en, ctrl.k, ctrl.k_count, ctrl.neurons, ctrl.batch,
-               ctrl.accumulate, ctrl.post_en, ctrl.forward_en, ctrl.forward_slot, ctrl.input_pop, ctrl.output_push);
+               ctrl.accumulate, ctrl.post_en, ctrl.post_col, ctrl.forward_en, ctrl.forward_slot, ctrl.input_pop, ctrl.output_push);
     }
     r->cycles++;
     if (c->execution == EXEC_WAIT)

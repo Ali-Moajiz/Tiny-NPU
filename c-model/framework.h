@@ -17,5 +17,7 @@ typedef struct {
     const BlockOps *ops;
 } Block;
 
+/* Registration is elaboration only; instances must keep a stable address. */
+bool framework_register(Block *, size_t *count, size_t capacity, void *, const BlockOps *);
 bool framework_step(BusContext *, const Block *, size_t, uint64_t);
 #endif

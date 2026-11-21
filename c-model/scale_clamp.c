@@ -1,64 +1,82 @@
 #include "scale_clamp.h"
 #include "logging.h"
 #include <stdio.h>
-/* Exact signed nearest-even rounding, no signed shifts or overflow. Inputs
- * are validated: positive INT32 multiplier and shift in [0,62]. */
-int8_t scale_clamp_value(int32_t value, int32_t multiplier, unsigned shift)
+#include <string.h>
+
+/* Four scaling PEs precede this packer. All arithmetic is in scale_pe.c. */
+static void publish(void *instance, uint64_t cycle)
 {
-    int64_t product = (int64_t)value * multiplier;
-    bool negative = product < 0;
-    uint64_t magnitude = (uint64_t)(negative ? -product : product), rounded = magnitude;
-    if (shift)
-    {
-        uint64_t divisor = UINT64_C(1) << shift, quotient = magnitude / divisor;
-        uint64_t remainder = magnitude % divisor, half = divisor / 2;
-        if (remainder > half || (remainder == half && (quotient & 1)))
-            quotient++;
-        rounded = quotient;
-    }
-    if (negative)
-        return rounded >= 128 ? INT8_MIN : (int8_t)-(int64_t)rounded;
-    return rounded > 127 ? INT8_MAX : (int8_t)rounded;
+    (void)cycle;
+    ScaleClamp *s = instance;
+    ResultSignal_drive(s->ports.out.result, s->regs.result);
 }
 static bool evaluate(void *instance, uint64_t cycle)
 {
     (void)cycle;
     ScaleClamp *s = instance;
-    AccSignal a = AccSignal_read(s->ports.in.activated);
-    s->evaluated = (ResultSignal){0};
-    if (a.valid)
-    {
-        s->evaluated.valid = true;
-        s->evaluated.neurons = a.neurons;
-        s->evaluated.batch = a.batch;
-        for (unsigned r = 0; r < a.neurons; r++)
-            for (unsigned v = 0; v < a.batch; v++)
-                line_set_byte(&s->evaluated.tile, v * 4 + r, (uint8_t)scale_clamp_value(a.tile.value[r][v], (int32_t)a.config.lane[0], a.config.lane[1]));
+    s->comb.capture = false;
+    for (unsigned v=0; v<ARRAY_SIZE; v++) {
+        s->comb.lane[v] = ByteLane_read(&s->scaled[v]);
+        s->comb.capture |= s->comb.lane[v].valid;
     }
-    ResultSignal out = s->regs.result;
-#if POST_LATENCY == 0
-    if (a.valid)
-        out = s->evaluated;
-#endif
-    ResultSignal_drive(s->ports.out.result, out);
     return true;
 }
-static void clock_scale(void *instance, uint64_t cycle)
+static bool check(void *instance, uint64_t cycle)
 {
     ScaleClamp *s = instance;
-    if (logging_ports_enabled())
-    {
-        log_block_begin("Scale / clamp");
-        printf("  in_valid=%u out_valid=%u post_latency=%u\n", AccSignal_read(s->ports.in.activated).valid, ResultSignal_read(s->ports.out.result).valid, POST_LATENCY);
-        log_tile("in", AccSignal_read(s->ports.in.activated).tile);
-        log_line("out", ResultSignal_read(s->ports.out.result).tile);
+    Control c = Control_read(s->ports.in.control);
+    if (c.post_en && c.post_col == 0 && (s->regs.collecting || s->comb.capture)) goto fault;
+    if (!s->comb.capture) return true;
+    ByteLane first = s->comb.lane[0];
+    PostTag t = first.tag;
+    if (!first.valid || !s->regs.collecting || t.pc != s->regs.pc ||
+        t.neurons != s->regs.neurons || t.batch != s->regs.batch ||
+        t.column != s->regs.next_column || t.column >= t.neurons) goto fault;
+    if (t.column && memcmp(&t.config, &s->regs.config, sizeof t.config)) goto fault;
+    for (unsigned v=0; v<ARRAY_SIZE; v++) {
+        ByteLane a = s->comb.lane[v];
+        if (a.valid != (v < t.batch)) goto fault;
+        if (a.valid && (a.tag.pc != t.pc || a.tag.column != t.column ||
+            a.tag.batch != t.batch || a.tag.neurons != t.neurons ||
+            memcmp(&a.tag.config, &t.config, sizeof t.config))) goto fault;
     }
-    if (s->evaluated.valid)
-    {
-        s->regs.result = s->evaluated;
+    return true;
+fault:
+    log_error(cycle, "Result packer", "invalid column order, lane mask or pipeline context");
+    return false;
+}
+static void clock_pack(void *instance, uint64_t cycle)
+{
+    ScaleClamp *s = instance;
+    Control c = Control_read(s->ports.in.control);
+    if (logging_ports_enabled()) {
+        log_block_begin("Result packer");
+        printf("  collecting=%u next_column=%u capture=%u result_valid=%u\n",
+            s->regs.collecting, s->regs.next_column, s->comb.capture, s->regs.result.valid);
+        log_line("result", s->regs.result.tile);
+    }
+    if (c.post_en && c.post_col == 0) {
+        s->regs.result = (ResultSignal){.neurons=c.neurons, .batch=c.batch};
+        s->regs.collecting = true;
+        s->regs.next_column = 0;
+        s->regs.neurons = c.neurons;
+        s->regs.batch = c.batch;
+        s->regs.pc = c.pc;
+    }
+    if (!s->comb.capture) return;
+    PostTag t = s->comb.lane[0].tag;
+    s->regs.config = t.config;
+    for (unsigned v=0; v<t.batch; v++)
+        line_set_byte(&s->regs.result.tile, 4*v+t.column, (uint8_t)s->comb.lane[v].value);
+    s->regs.next_column++;
+    log_flow(cycle, "Result packer", "PACK", "pc=0x%05X col=%u bytes=%u layout=4*vector+neuron",
+        t.pc, t.column, t.batch);
+    if (s->regs.next_column == t.neurons) {
+        s->regs.collecting = false;
+        s->regs.result.valid = true;
         log_flow(cycle, "Scale", "RESULT", "pc=0x%05X available_cycle=%llu tile=%08X_%08X_%08X_%08X",
-                 Control_read(s->ports.in.control).pc, (unsigned long long)(cycle + POST_LATENCY),
-                 s->evaluated.tile.lane[3], s->evaluated.tile.lane[2], s->evaluated.tile.lane[1], s->evaluated.tile.lane[0]);
+            t.pc, (unsigned long long)(cycle + 1), s->regs.result.tile.lane[3],
+            s->regs.result.tile.lane[2], s->regs.result.tile.lane[1], s->regs.result.tile.lane[0]);
     }
 }
-const BlockOps scale_clamp_ops = {.eval = evaluate, .clock = clock_scale};
+const BlockOps scale_clamp_ops = {.publish=publish, .eval=evaluate, .check=check, .clock=clock_pack};

@@ -6,6 +6,7 @@
 #include "mac.h"
 #include "activation.h"
 #include "scale_clamp.h"
+#define NPU_BLOCK_CAPACITY (5u + ARRAY_SIZE * ARRAY_SIZE + 2u * ARRAY_SIZE)
 typedef struct
 {
     BusContext bus_context;
@@ -20,9 +21,11 @@ typedef struct
         ControlBus control;
         TileSignalBus memory, input;
         StreamStatusBus stream_status;
-        AccSignalBus sums, activated;
+        AccLaneBus sums[ARRAY_SIZE], activated[ARRAY_SIZE];
         ResultSignalBus result;
     } wires;
+    Block blocks[NPU_BLOCK_CAPACITY];
+    size_t block_count;
     uint64_t cycle;
     bool error;
 } Npu;
