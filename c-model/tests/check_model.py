@@ -14,7 +14,7 @@ import tempfile
 
 
 def memory_constants():
-    text = (Path(__file__).resolve().parents[1] / 'types.h').read_text()
+    text = (Path(__file__).resolve().parents[1] / 'include' / 'types.h').read_text()
     return {name: int(value, 16) for name, value in
             re.findall(r'^#define (\w+) (0x[0-9A-Fa-f]+)u$', text, re.M)}
 

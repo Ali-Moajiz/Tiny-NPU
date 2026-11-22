@@ -41,26 +41,28 @@ instruction stream determines operand loads and forwarding.
 ## File layout
 
 **24 maintained files: 18 implementation files, 4 tests, Makefile and README.**
-Build products live in `build/` and are not source files.
+Headers are in `include/`, implementations in `src/`, and tests in `tests/`.
+Build products live in `build/` and are not source files. Run Make from the
+`c-model/` directory; its include search path is configured automatically.
 
 | Files | Responsibility |
 |---|---|
-| `npu.c`, `npu.h` | Top-level instances, wiring, initialization and cycle entry point |
-| `controller.c`, `controller.h` | ISA, instruction handlers and fetch/decode/dispatch/update FSM |
-| `sram.c`, `sram.h` | Single-port SRAM and registered read response |
-| `mac.c`, `mac.h` | MAC PE datatype, multiplier/adder/accumulator, operand slots and 4x4 array |
-| `activation.c`, `activation.h` | Activation functions, registered PE and four lane instances |
-| `scale_clamp.c`, `scale_clamp.h` | Registered scaling PE, four lanes and result packer |
-| `types.h` | Shared widths, memory map, bus payloads and integer rounding |
-| `bus.c`, `bus.h` | Typed bus API, ownership checks, block registration and simulation clock phases |
-| `sim.c`, `sim.h` | Host image/file I/O, stream endpoint, logging, metrics and optional TB helpers |
-| `main.c` | Host command-line runner |
+| `src/npu.c`, `include/npu.h` | Top-level instances, wiring, initialization and cycle entry point |
+| `src/controller.c`, `include/controller.h` | ISA, instruction handlers and fetch/decode/dispatch/update FSM |
+| `src/sram.c`, `include/sram.h` | Single-port SRAM and registered read response |
+| `src/mac.c`, `include/mac.h` | MAC PE datatype, multiplier/adder/accumulator, operand slots and 4x4 array |
+| `src/activation.c`, `include/activation.h` | Activation functions, registered PE and four lane instances |
+| `src/scale_clamp.c`, `include/scale_clamp.h` | Registered scaling PE, four lanes and result packer |
+| `include/types.h` | Shared widths, memory map, bus payloads and integer rounding |
+| `src/bus.c`, `include/bus.h` | Typed bus API, ownership checks, block registration and simulation clock phases |
+| `src/sim.c`, `include/sim.h` | Host image/file I/O, stream endpoint, logging, metrics and optional TB helpers |
+| `src/main.c` | Host command-line runner |
 | `tests/check_units.c` | Bus, controller, memory, arithmetic and PE timing/fault tests |
 | `tests/check_image.c` | Image-loader regression helper |
 | `tests/check_model.py` | Independent numerical, cycle and compiler-integration checks |
 | `tests/check_tb.py` | Random/interactive TB regression checks |
 
-Start with `npu.h` and `npu.c` to see the complete wiring. Then read each block's
+Start with `include/npu.h` and `src/npu.c` to see the complete wiring. Then read each block's
 header for its registers/ports and its `.c` file for behavior. PE definitions
 and their parent arrays stay together; there are no separate PE wrapper files.
 
@@ -182,17 +184,17 @@ shifts and masks. No floating-point library is used in the PEs.
 For full-core HLS, the backend must replace simulation callback dispatch and
 checked pointer buses with static hardware calls/interfaces, replace the host
 stream endpoint, and select SRAM/interface/pipeline directives for the target
-tool. Diagnostic calls and `main.c`/`sim.c` stay outside the synthesis graph.
+tool. Diagnostic calls and `src/main.c`/`src/sim.c` stay outside the synthesis graph.
 HLS scheduling may add stages: verify generated RTL latency and resource
 sharing against this model. No HLS synthesis or RTL equivalence run is claimed.
 
 ## Extend and test
 
-Add an opcode's validator/execution callback and descriptor in `controller.c`;
+Add an opcode's validator/execution callback and descriptor in `src/controller.c`;
 `controller_register()` still supports extensions without changing the FSM.
 Callbacks emit control signals; they do not directly modify datapath registers.
 For a new block, define its registers/ports and `BlockOps`, connect its buses
-in `npu.c`, increase registry capacity if needed and register the instance once.
+in `src/npu.c`, increase registry capacity if needed and register the instance once.
 
 ```sh
 make -s test LOG=none

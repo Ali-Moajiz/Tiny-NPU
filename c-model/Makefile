@@ -27,9 +27,9 @@ $(error FUSE is encoded by LOAD_OPERAND/FORWARD instructions, not a C-model buil
 endif
 BUILD := build/tb$(TB)-b$(BATCH)-simple-$(LOG)-san$(SANITIZE)
 BIN := $(BUILD)/tiny_npu
-SOURCES := bus.c controller.c sram.c mac.c activation.c scale_clamp.c npu.c sim.c main.c
-OBJECTS := $(SOURCES:%.c=$(BUILD)/%.o)
-CPPFLAGS += -DNPU_TB=$(TB) -DNPU_BATCH=$(BATCH) -DNPU_LOG_FLOW=$(if $(filter flow both,$(LOG)),1,0) -DNPU_LOG_PORTS=$(if $(filter ports both,$(LOG)),1,0)
+SOURCES := $(addprefix src/,bus.c controller.c sram.c mac.c activation.c scale_clamp.c npu.c sim.c main.c)
+OBJECTS := $(SOURCES:src/%.c=$(BUILD)/%.o)
+CPPFLAGS += -Iinclude -DNPU_TB=$(TB) -DNPU_BATCH=$(BATCH) -DNPU_LOG_FLOW=$(if $(filter flow both,$(LOG)),1,0) -DNPU_LOG_PORTS=$(if $(filter ports both,$(LOG)),1,0)
 CFLAGS ?= -O2 -g
 CFLAGS += -std=c99 -Wall -Wextra -Werror -MMD -MP
 ifeq ($(SANITIZE),1)
@@ -40,15 +40,15 @@ endif
 all: $(BIN)
 $(BIN): $(OBJECTS)
 	$(CC) $(OBJECTS) $(LDFLAGS) -o $@
-$(BUILD)/%.o: %.c
+$(BUILD)/%.o: src/%.c
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 run: $(BIN)
 	$(BIN) --sram "$(SRAM)" $(ARGS)
 test: $(BIN)
-	$(CC) $(CPPFLAGS) $(CFLAGS) -I. tests/check_units.c $(filter-out main.c,$(SOURCES)) $(LDFLAGS) -o $(BUILD)/check_units
+	$(CC) $(CPPFLAGS) $(CFLAGS) tests/check_units.c $(filter-out src/main.c,$(SOURCES)) $(LDFLAGS) -o $(BUILD)/check_units
 	$(BUILD)/check_units
-	$(CC) $(CPPFLAGS) $(CFLAGS) -I. tests/check_image.c $(filter-out main.c,$(SOURCES)) $(LDFLAGS) -o $(BUILD)/check_image
+	$(CC) $(CPPFLAGS) $(CFLAGS) tests/check_image.c $(filter-out src/main.c,$(SOURCES)) $(LDFLAGS) -o $(BUILD)/check_image
 	python3 tests/check_model.py --binary $(BIN) --loader-checker $(BUILD)/check_image
 clean:
 	rm -rf build
