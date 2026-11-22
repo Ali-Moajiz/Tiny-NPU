@@ -2,7 +2,7 @@
 #define NPU_H
 #include "controller.h"
 #include "sram.h"
-#include "stream.h"
+#include "sim.h"
 #include "mac.h"
 #include "activation.h"
 #include "scale_clamp.h"

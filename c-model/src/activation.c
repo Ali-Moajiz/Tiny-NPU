@@ -1,7 +1,9 @@
-#include "activation_pe.h"
-#include "pe_math.h"
-#include "logging.h"
+#include "activation.h"
+#include "sim.h"
 #include <stdio.h>
+#include <string.h>
+
+/* ---- PE datapath and registers ---- */
 
 const char *activation_name(unsigned mode)
 {
@@ -40,13 +42,13 @@ bool activation_value(int32_t input, unsigned mode, uint32_t parameter, int32_t 
     }
     return true;
 }
-static void publish(void *instance, uint64_t cycle)
+static void pe_publish(void *instance, uint64_t cycle)
 {
     (void)cycle;
     ActivationPe *p = instance;
     AccLane_drive(p->ports.out.value, p->regs.output);
 }
-static bool evaluate(void *instance, uint64_t cycle)
+static bool pe_evaluate(void *instance, uint64_t cycle)
 {
     ActivationPe *p = instance;
     p->comb.result = AccLane_read(p->ports.in.value);
@@ -58,7 +60,7 @@ static bool evaluate(void *instance, uint64_t cycle)
     }
     return true;
 }
-static void clock_pe(void *instance, uint64_t cycle)
+static void pe_clock(void *instance, uint64_t cycle)
 {
     ActivationPe *p = instance;
     AccLane in = AccLane_read(p->ports.in.value);
@@ -73,4 +75,15 @@ static void clock_pe(void *instance, uint64_t cycle)
         activation_name(in.tag.config.lane[2]), (unsigned long long)(cycle + 1));
     p->regs.output = p->comb.result; /* Bubble clears valid, not a repeated token. */
 }
-const BlockOps activation_pe_ops = {.publish=publish, .eval=evaluate, .clock=clock_pe};
+const BlockOps activation_pe_ops = {.publish=pe_publish, .eval=pe_evaluate, .clock=pe_clock};
+
+/* ---- Array/container wiring and control ---- */
+
+void activation_init(Activation *a)
+{
+    for (unsigned i=0; i<ARRAY_SIZE; i++) {
+        a->lane[i].lane = i;
+        a->lane[i].ports.in.value = a->ports.in.lane[i];
+        a->lane[i].ports.out.value = a->ports.out.lane[i];
+    }
+}

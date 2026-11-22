@@ -10,9 +10,6 @@
 #ifndef NPU_BATCH
 #define NPU_BATCH 1
 #endif
-#if NPU_TB
-#include "tb.h"
-#endif
 static bool number(const char *text,uint64_t *out)
 {
     if(!*text||*text=='-') return false;

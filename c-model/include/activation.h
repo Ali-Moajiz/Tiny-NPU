@@ -1,7 +1,8 @@
-#ifndef ACTIVATION_PE_H
-#define ACTIVATION_PE_H
-#include "framework.h"
-#include "pe_signals.h"
+#ifndef ACTIVATION_H
+#define ACTIVATION_H
+#include "types.h"
+
+/* ---- One processing element ---- */
 
 typedef enum {
     ACT_BYPASS=0, ACT_RELU=1, ACT_LEAKY_RELU=2, ACT_CLIPPED_RELU=3
@@ -24,4 +25,15 @@ typedef struct {
     struct { AccLane result; } comb;
 } ActivationPe;
 extern const BlockOps activation_pe_ops;
+
+/* ---- Array/container ---- */
+
+typedef struct {
+    struct { const AccLaneBus *lane[ARRAY_SIZE]; } in;
+    struct { AccLaneBus *lane[ARRAY_SIZE]; } out;
+} ActivationPorts;
+/* Bank container; each lane owns its actual register and callbacks. */
+typedef struct { ActivationPorts ports; ActivationPe lane[ARRAY_SIZE]; } Activation;
+void activation_init(Activation *);
+
 #endif

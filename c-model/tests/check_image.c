@@ -1,5 +1,5 @@
 /* Host-only loader regression helper. Never enters simulated execution. */
-#include "sram.h"
+#include "sim.h"
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>

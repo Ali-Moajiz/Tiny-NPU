@@ -1,287 +1,219 @@
-# Tiny NPU C model
+# Tiny NPU C-model
 
-Execute the Tiny NPU compiler's `sram.hex` image with cycle-by-cycle logging.
-Requires a C99 compiler, Make, and Python 3 for tests. No HLS installation is required.
+Run compiled Tiny-NPU SRAM images with cycle-level PE and bus logging.
+Requires a C99 compiler, Make and Python 3 for tests.
 
 ## Run
 
-From `Tiny-NPU/c-model/`, run an image compiled with `--debug` (which emits
-`sram.hex`). Set `BATCH` to the batch size used by the compiler.
+From `Tiny-NPU/c-model`:
 
 ```sh
-# Random quantized inputs; example: a 4->8->8->2 model, batch 4.
+# 100 random batches, seed 42; match dimensions to the compiled model.
 make -s run TB=1 BATCH=4 LOG=flow SRAM=../output/sram.hex \
-  ARGS="--runs 10 --input-features 4 --output-features 2" 2>&1 | tee npu.log
+  ARGS="--runs 100 --seed 42 --input-features 4 --output-features 2"
 
-# Enter one batch, view its result, then enter another. Type q to quit.
+# Interactive input; q exits.
 make -s run TB=1 BATCH=4 LOG=flow SRAM=../output/sram.hex \
   ARGS="--interactive --input-features 4 --output-features 2"
 
-# Run without the testbench, using packed input/output bytes.
-make -s run TB=0 BATCH=4 LOG=flow SRAM=../output/sram.hex \
+# Packed files, with the optional interactive/random TB excluded.
+make -s run TB=0 BATCH=4 LOG=none SRAM=../output/sram.hex \
   ARGS="--input-bin input.bin --output-bin output.bin"
 ```
 
-TB defaults: 100 batches, seed 42, four input and four output features. Use
-`--seed N` to change the random sequence and `--runs N` to change the run count.
-Each inference resets execution and restores the original preloaded memory
-image. The file is read once per process, not once per cycle or inference.
-`tb.c` is excluded when `TB=0`.
+Inputs are **quantized INT8**, not floats. Apply the model's input scale before
+supplying real-world values. `BATCH=1..4` must match the compiled instructions;
+feature-count options control host packing and display, not network execution.
+TB defaults are 100 batches, seed 42 and four input/output features. Each
+inference resets the model and restores its preloaded SRAM image. `--input-bin`
+runs once; `--output-bin` requires one inference. `--max-cycles` defaults to 100000.
 
-Inputs are **already quantized signed INT8**, not floating-point features.
-Apply the compiler's exported input scale before supplying real-world values.
-`--input-features` and `--output-features` describe host packing/display; the
-instruction words determine compute dimensions. `BATCH` is checked against
-those words and does not recompile the network.
+A packed beat contains four channels for up to four vectors: byte
+`4*vector + channel_in_tile`. Zero-pad unused vectors/channels. Larger tensors
+use consecutive channel tiles. Outputs use the same layout.
 
-Packed binary input uses one 16-byte beat per four feature channels: byte
-`4*vector + channel_in_tile`. Zero-pad unused vectors/channels. For more than
-four channels, send consecutive channel tiles. Output uses the same layout.
-`--input-bin` executes once and overrides random input generation.
+Use `LOG=none|flow|ports|both`; append `2>&1 | tee npu.log` to save logs.
+`SANITIZE=1` enables ASan/UBSan. `POST_LATENCY=1` is a deprecated compatibility
+argument accepted by existing scripts; it does not change timing.
+`POST_LATENCY=0`, `PREFETCH` and `FUSE` build switches are unsupported. The
+instruction stream determines operand loads and forwarding.
 
-Build options: `LOG=flow|ports|both|none` and
-`SANITIZE=1`. Binaries are placed in separate `build/` directories for each
-configuration. `--max-cycles N` limits execution (default 100000).
+## File layout
 
-## Model organization
+**24 maintained files: 18 implementation files, 4 tests, Makefile and README.**
+Headers are in `include/`, implementations in `src/`, and tests in `tests/`.
+Build products live in `build/` and are not source files. Run Make from the
+`c-model/` directory; its include search path is configured automatically.
 
 | Files | Responsibility |
 |---|---|
-| `main.c`, `tb.c` | Host file/terminal I/O and optional random testbench |
-| `npu_top.c` | Top-level instances, port connections, registered block order |
-| `bus.c`, `framework.c` | Checked point-to-point buses and cycle phases |
-| `isa.c` | Decode the 128-bit instruction fields |
-| `controller.c` | Fetch, response, decode, dispatch, update lifecycle |
-| `instructions.c` | Dedicated instruction callbacks and opcode registration |
-| `sram.c` | Hex preload, single-port 65536x128 memory, registered read response |
-| `stream.c` | Simulation input/output stream endpoint and back-pressure |
-| `mac.c` | Two operand slots, row/column broadcast muxes, accumulator readout |
-| `mac_pe.c` | One INT8 multiplier, bias/feedback mux, checked adder and private INT32 accumulator |
-| `activation.c`, `activation_pe.c` | Four registered activation PE instances |
-| `scale_clamp.c`, `scale_pe.c` | Four registered scaling PEs and a result packer |
-| `pe_signals.h`, `pe_math.h` | Typed PE wires and integer rounding primitive |
+| `src/npu.c`, `include/npu.h` | Top-level instances, wiring, initialization and cycle entry point |
+| `src/controller.c`, `include/controller.h` | ISA, instruction handlers and fetch/decode/dispatch/update FSM |
+| `src/sram.c`, `include/sram.h` | Single-port SRAM and registered read response |
+| `src/mac.c`, `include/mac.h` | MAC PE datatype, multiplier/adder/accumulator, operand slots and 4x4 array |
+| `src/activation.c`, `include/activation.h` | Activation functions, registered PE and four lane instances |
+| `src/scale_clamp.c`, `include/scale_clamp.h` | Registered scaling PE, four lanes and result packer |
+| `include/types.h` | Shared widths, memory map, bus payloads and integer rounding |
+| `src/bus.c`, `include/bus.h` | Typed bus API, ownership checks, block registration and simulation clock phases |
+| `src/sim.c`, `include/sim.h` | Host image/file I/O, stream endpoint, logging, metrics and optional TB helpers |
+| `src/main.c` | Host command-line runner |
+| `tests/check_units.c` | Bus, controller, memory, arithmetic and PE timing/fault tests |
+| `tests/check_image.c` | Image-loader regression helper |
+| `tests/check_model.py` | Independent numerical, cycle and compiler-integration checks |
+| `tests/check_tb.py` | Random/interactive TB regression checks |
 
-Each stateful block owns `regs` and `ports`. Only `npu_top.c` connects the port
-pointers. There are no `q/d` structures. The generic framework calls every
-registered block through **publish -> evaluate -> check -> clock** phases.
-Registers change only in the clock phase, after every transfer has passed
-validation. A block never observes another block's new register value on the
-same edge. Combinational outputs can propagate during evaluation; block order
-must follow those combinational dependencies.
+Start with `include/npu.h` and `src/npu.c` to see the complete wiring. Then read each block's
+header for its registers/ports and its `.c` file for behavior. PE definitions
+and their parent arrays stay together; there are no separate PE wrapper files.
 
-The SRAM response is a broadcast 128-bit data bus. Controller latch controls
-select slot 0/1 and X/W/B/CFG inside the MAC. The controller receives instruction
-words from SRAM, but operand/result data goes directly between datapath blocks.
-Results can write SRAM or forward to another MAC input slot. The runtime stream
-endpoint is a simulator peripheral, not an internal post-processing FIFO.
+## Registers, buses and clocks
 
-## PE instances and timing
+Each PE owns `regs` and `ports`. Combinational scratch is named `comb`; the MAC
+also exposes its combinational `enabled` signal. There are no q/d register copies.
+Only initialization connects ports. Consumers share the producer's bus object.
+These buses model wires, not AXI transactions.
 
-The active array is still **4x4 broadcast**, with 16 `MacPe` instances at
-`n.mac.cell[vector][neuron]`. All cells in one row share `x[vector]`; all cells
-in one column share `w[neuron]` and `bias[neuron]`. Each cell has its own
-accumulator output bus. There is no PE-to-PE forwarding and no adder tree.
+Every simulated cycle runs **publish → evaluate → check → clock**. All old
+registered outputs are published before evaluation. Combinational dependencies
+must be evaluated in order; registered-stage order does not affect their data.
+Every check completes before any register changes. Invalid transfers and INT32
+overflow reject the whole edge, preventing partial updates.
 
-At compute step k, every enabled cell calculates:
+The 16 cells are `mac.cell[vector][neuron]`. A row shares X; a column shares W
+and bias. Each cell owns its accumulator and result bus. At each k-step:
 
-`acc[vector][neuron] = (bias if k=0 and !accumulate else acc) + X[vector][k] * W[neuron][k]`
+`acc = (bias if k=0 and !accumulate else acc) + X[vector][k] * W[neuron][k]`
 
-The signed 8x8 product is 16 bits. The feedback adder checks the INT32 range
-before capturing the accumulator; overflow faults the entire edge. Disabled
-cells hold their registers. X/W operand registers remain in the MAC's two
-shared slots, avoiding a redundant register stage in every cell. `regs` holds
-state, `ports` holds connections, and `comb` names combinational wires. A product
-in `comb` is not a pipeline register. One k-step still takes one compute clock.
+The signed product is 16 bits; accumulation is INT32 with an overflow check.
+Disabled cells hold state. Two operand slots inside the MAC hold X/W/B/CFG.
+They do not automatically overlap loads with compute: instructions issue
+sequentially. Retained sums survive operand loads and further MAC instructions.
 
-Four `ActivationPe` instances and four `ScalePe` instances process one neuron
-column across the batch each clock. Each PE owns its registered output and
-valid bit. The scale PE has a signed 32x32->64 product, nearest-even rounded
-shift and INT8 saturation. The packer preserves byte `4*vector + neuron` and
-zero-fills inactive bytes. Results remain available for SRAM write or FORWARD
-until the next POST starts. No internal result FIFO is added.
+POST reads one neuron column per clock into four activation lanes (one lane
+per vector). Activation and scaling each have one output register. A packer
+collects INT8 columns, zero-pads inactive bytes and holds the completed 128-bit
+result for SRAM or forwarding. Forwarding copies the packed tile without a
+transpose; there is no result FIFO.
 
-For N=4, relative to the first POST dispatch clock:
-
-| Clock | Activation captures | Scaling captures | Packer captures | SRAM |
-|---|---|---|---|---|
-| T | Column 0 | — | Reset output tile | — |
-| T+1 | Column 1 | Column 0 | — | — |
-| T+2 | Column 2 | Column 1 | Column 0 | — |
-| T+3 | Column 3 | Column 2 | Column 1 | — |
-| T+4 | — | Column 3 | Column 2 | — |
-| T+5 | — | — | Column 3; result complete | — |
-| T+6 | — | — | Hold | Optional result store |
-
-POST dispatch therefore takes `N+2` clocks without a store, or `N+3` with a
-store. Both PE stages always have one register boundary; the old
-`POST_LATENCY=1` is accepted only for compatibility with existing scripts and
-emits a deprecation warning; `POST_LATENCY=0` is rejected. Instruction encoding and numerical
-results for existing bypass/ReLU programs stay compatible. See
-[PE_CYCLE_TRACE.md](PE_CYCLE_TRACE.md) for a full-program schedule.
-
-CFG is four little-endian 32-bit words: positive INT32 multiplier M, shift S
-(0..62), activation mode, and activation parameter. Activation acts in
-**accumulator units before requantization**, not on a dequantized float.
-
-| Mode | Activation | Parameter (CFG word 3) | Integer behavior |
+| POST clock, N=4 | Activation capture | Scaling capture | Packer / store |
 |---|---|---|---|
-| 0 | Bypass | 0 | x |
-| 1 | ReLU | 0 | max(0, x) |
-| 2 | LeakyReLU | p = 0..31 | x if nonnegative; otherwise round-even(x / 2^p) |
-| 3 | Clipped ReLU | positive INT32 ceiling C | min(C, max(0, x)) |
+| T | Column 0 | — | Clear tile |
+| T+1 | Column 1 | Column 0 | — |
+| T+2 | Column 2 | Column 1 | Column 0 |
+| T+3 | Column 3 | Column 2 | Column 1 |
+| T+4 | — | Column 3 | Column 2 |
+| T+5 | — | — | Column 3; result complete |
+| T+6 | — | — | Optional SRAM store |
 
-Modes 2/3 extend the former reserved configuration fields. The existing
-compiler still emits only modes 0/1; compiler support is a separate change.
-A ceiling of 6 means six accumulator units, **not automatically ReLU6** in
-real units. Tanh/sigmoid are not implemented: they need a specified input scale,
-fixed-point output format and approximation error budget. Unsupported modes
-are rejected rather than silently approximated with host floating-point math.
+POST dispatch takes `N+2+store` clocks, where store is 0 or 1. A value captured
+at clock C is available in clock C+1. Flow logs label PC, k, PE coordinates,
+products, partial sums and ACT/SCALE/PACK events. Metrics count useful MACs,
+compute clocks, SRAM accesses and utilization. Bus stalls count additional
+waits for unavailable input/output/response, not normal fetch latency.
 
-`PostTag` carries configuration and column/batch context through the pipeline
-so each value can be checked before packing. PC is diagnostic metadata; this
-C transport layout is not a requirement to synthesize a PC register per lane.
-The fixed compiler ABI and SRAM beat packing still target 4x4, batch 1..4.
-Changing `ARRAY_SIZE` alone does not implement 8x8 support.
+The golden batch-4 test computes at clocks 33–36, reads columns at 41–44,
+packs the last column at 46, stores at 47 and halts at 59. The compiler's
+42-instruction 4→8→8→2 regression takes 289 clocks, 32 compute clocks and 448
+useful MAC updates. This file consolidation preserves those timings.
 
-## SRAM and instruction ABI
+## Memory and ISA
 
-`sram.hex` must contain exactly 65,536 data words of 32 hex digits. Each line is bits
-127..0, with the lowest-address byte at the right. Blank lines and `#`/`//`
-comments are accepted. Malformed or incomplete files are rejected before
-execution. SRAM accesses use byte addresses, aligned to 16 bytes.
+SRAM is one 1 MiB array, 65,536 × 128 bits. Byte addresses are 16-byte aligned.
+`sram.hex` must contain exactly 65,536 words of 32 hex digits: bits 127..0,
+lowest-address byte at the right. Blank lines and `#`/`//` comments are accepted.
+The host loads and validates the complete image once; simulated reads access
+only the SRAM array. `program.hex` alone is not a complete image.
 
-| Byte address range | Contents |
+| Byte range (inclusive) | Contents |
 |---|---|
-| `0x00000–0xBFFFF` | INT8 weights (768 KiB) |
+| `0x00000–0xBFFFF` | INT8 weights |
 | `0xC0000–0xDFFFF` | Input/intermediate/output tiles |
 | `0xE0000–0xEFFFF` | INT32 biases in accumulator units |
-| `0xF0000–0xF0FFF` | CFG: multiplier, shift, activation mode, activation parameter |
-| `0xF1000–0xFFFFF` | Instructions; reset PC = `0xF1000` |
+| `0xF0000–0xF0FFF` | Quantization/activation configuration |
+| `0xF1000–0xFFFFF` | Instructions; reset PC `0xF1000` |
 
-The SRAM is one 1 MiB block: 65,536 × 128 bits. Region ends are exclusive
-`0xC0000`, `0xE0000`, `0xF0000`, `0xF1000`, `0x100000`; capacities are 768,
-128, 64, 4 and 60 KiB. Physical word address is byte address / 16 (16 bits).
-The final beat is `0xFFFF0`; `0x100000` is outside memory. The loader stages
-its image on the host heap and commits only a fully validated image; the NPU
-and reset snapshot have static host storage to avoid large stack allocations.
-File I/O occurs only at initialization, never during simulated memory accesses.
+Instruction fields are opcode `[127:124]`, source `[123:92]`, destination
+`[91:60]`, dimensions `[59:32]`, flags `[31:0]`. Dimensions pack N in `[3:0]`,
+batch in `[7:4]`, K in `[11:8]`. LOAD_OPERAND destination is `(slot<<2)|field`,
+where X=0, W=1, B=2, CFG=3. Each transfer moves one 128-bit beat.
 
-Compiler and model must use the same memory map. **Recompile old 16 KiB images**:
-
-```sh
-# From the repository root; alternatively use python3 compiler/main.py.
-./compiler/bin/tiny-npu-compiler model.onnx --calibration samples.npy --out output --debug
-make -C c-model run TB=1 BATCH=4 LOG=flow SRAM=../output/sram.hex \
-  ARGS="--runs 100 --seed 42 --input-features 4 --output-features 2"
-```
-
-To rebuild the executable, install compiler/requirements.txt and
-`pyinstaller==6.16.0 pyinstaller-hooks-contrib==2025.9`, then run
-`make -C compiler binary PYTHON=python3`. `sram.bin` is exactly 1,048,576 bytes;
-`params.bin` is 987,136 bytes including unused gaps before entry PC.
-`program.bin`/`program.hex` contain only instructions, not a full SRAM image.
-Hex and other debug reports still require `--debug`.
-
-The program region holds 3,840 instructions. Stream buffers still hold 256
-beats (up to 1,024 input/output features), and batches remain 1–4. Only existing
-operators, two operand slots and the existing forwarding cases are supported.
-Increasing SRAM does not change instruction encoding or dispatch timing.
-
-Instruction layout: opcode `[127:124]`, src `[123:92]`, dest `[91:60]`, dims
-`[59:32]`, flags `[31:0]`. Dims packs N in `[3:0]`, batch in `[7:4]`, K in
-`[11:8]`. LOAD_OPERAND destination is `(slot << 2) | field`, with X=0, W=1,
-B=2, CFG=3. Every load/store transfers exactly one 128-bit beat.
-
-| Opcode | Instruction | Dispatch cycles, without back-pressure |
+| Opcode | Instruction | Dispatch clocks, excluding back-pressure |
 |---|---|---|
-| `1` | STREAM_LOAD | 1 |
-| `2` | EXEC_MAC | K |
-| `3` | POST_PROC | N + 2 + store (store is 0 or 1) |
-| `4` | FORWARD | 1 |
-| `5` | STREAM_STORE | 2 |
-| `6`, `7` | LOOP_START, LOOP_END | 1 each |
-| `8` | LOAD_OPERAND | 2 |
-| `F` | HALT | 1 |
+| 1 | STREAM_LOAD | 1 |
+| 2 | EXEC_MAC | K |
+| 3 | POST_PROC | N+2+store |
+| 4 | FORWARD | 1 |
+| 5 | STREAM_STORE | 2 |
+| 6, 7 | LOOP_START, LOOP_END | 1 each |
+| 8 | LOAD_OPERAND | 2 |
+| F | HALT | 1 |
 
-Each instruction also costs four lifecycle cycles: fetch request, fetch
-response, decode, update. SRAM reads complete one cycle after request; their
-response remains valid until consumed. Stream transfers wait for availability.
-Only one non-nested hardware loop is supported, matching the compiler ABI.
+Each instruction also costs four lifecycle clocks: fetch request, response,
+decode and update. EXEC_MAC flag bit 0 selects the slot; bit 1 retains sums.
+POST flag bit 2 enables store. One non-nested hardware loop is supported.
+The instruction region holds 3840 words. Host stream capacity is 256 beats
+(up to 1024 features at batch 4). Array size and compiler packing remain 4x4.
 
-EXEC_MAC flags: bit 0 selects the slot, bit 1 retains accumulators. Otherwise,
-MAC k=0 seeds each accumulator with its neuron bias. One clock updates N*batch
-PEs. Partial sums survive intervening instructions and operand loads. POST
-consumes the completed accumulator tile column by column; activation precedes INT64 multiply,
-nearest-even shift and signed INT8 clamp. Inactive output bytes are zero.
+CFG is four little-endian 32-bit words: positive INT32 multiplier M, shift
+S=0..62, activation mode and parameter. Activation precedes multiplication by
+M, nearest-even rounded shift S and saturation to [-128,127].
 
-This is a sequential instruction engine, not an overlapping issue pipeline.
-Two operand slots do not automatically overlap loads with compute. Prefetch and
-forwarding depend on the emitted program; obsolete `PREFETCH`/`FUSE` build flags
-are rejected. For a 42-instruction 4->8->8->2 batch-4 program, the measured totals
-are 289 cycles, with 32 compute clocks and 448 useful MAC updates. The previous
-whole-tile post implementation took 266 cycles with one output register. Four
-activation/scaling lanes use fewer arithmetic units but require more clocks;
-this refactor does not claim a throughput improvement. Different instruction
-programs have different cycle counts.
+| Mode | Operation | Parameter |
+|---|---|---|
+| 0 | Bypass | 0 |
+| 1 | ReLU | 0 |
+| 2 | LeakyReLU: negative branch round-even(x / 2^p) | p=0..31 |
+| 3 | Clipped ReLU: min(C,max(0,x)) | positive INT32 C |
 
-Flow logs identify PC, opcode, k, active PEs, input, weight, product, prior sum,
-and updated accumulator. ACT, SCALE, PACK and READOUT events include the column
-and lane; `available_cycle` states when a registered output can be consumed. Metrics include instructions, useful MACs, SRAM
-reads/writes, compute utilization and whole-run utilization. SRAM reads include
-instruction fetches. `bus_stall_cycles` counts extra waits for unavailable
-responses/input/output readiness; it excludes normal fetch and response cycles.
+Parameters use accumulator units. C=6 is not automatically floating-point
+ReLU6. Existing compiler binaries use modes 0/1; modes 2/3 await compiler
+support. Tanh/sigmoid require a specified numeric format and approximation
+budget and are not silently implemented using host floating-point functions.
 
-## Add an instruction or block
+## HLS boundary
 
-For an instruction, implement its validator and execution callback in
-`instructions.c`, then add an `InstructionHandler` descriptor to `builtins[]`.
-Alternatively register a static descriptor with `controller_register()` after
-initialization. Duplicate opcodes, null callbacks and out-of-range opcodes are
-rejected. Descriptors must remain alive during execution. `tests/check_core.c`
-shows a custom opcode registered without changing the controller FSM.
+This is a **cycle-accurate C reference model, not a synthesis-qualified full
+NPU top**. File consolidation alone cannot make the simulation framework RTL.
 
-An execution callback emits control signals and returns DONE, PROGRESS, WAIT,
-or FAULT. PROGRESS advances the instruction's microstep; WAIT holds it. An
-optional retirement callback updates controller state at the update edge. Do
-not mutate datapath registers from an instruction callback.
+The hardware arithmetic uses fixed-width integers, static arrays, bounded
+loops and explicit register boundaries. `mac_pe_datapath()`,
+`activation_value()` and `scale_clamp_value()` isolate scalar arithmetic from
+bus traversal and host I/O. Rounded division by a power of two uses unsigned
+shifts and masks. No floating-point library is used in the PEs.
 
-For a block, define its registers/ports in its own header, supply `BlockOps`,
-connect its typed buses in `npu_top.c`, and call `framework_register()` once
-during initialization. The framework visits the registered instances each cycle.
-All buses have one designated driver; consumers share that bus instance.
+For full-core HLS, the backend must replace simulation callback dispatch and
+checked pointer buses with static hardware calls/interfaces, replace the host
+stream endpoint, and select SRAM/interface/pipeline directives for the target
+tool. Diagnostic calls and `src/main.c`/`src/sim.c` stay outside the synthesis graph.
+HLS scheduling may add stages: verify generated RTL latency and resource
+sharing against this model. No HLS synthesis or RTL equivalence run is claimed.
 
-The callback registry, file loader, logs and host runner are simulation software.
-They are not directly synthesizable HLS RTL; a hardware backend needs static
-opcode decoding and explicit hardware interfaces with the same timing contract.
+## Extend and test
 
-## Test
+Add an opcode's validator/execution callback and descriptor in `src/controller.c`;
+`controller_register()` still supports extensions without changing the FSM.
+Callbacks emit control signals; they do not directly modify datapath registers.
+For a new block, define its registers/ports and `BlockOps`, connect its buses
+in `src/npu.c`, increase registry capacity if needed and register the instance once.
 
 ```sh
 make -s test LOG=none
 make -s test LOG=both SANITIZE=1
 
-# Optional: compare with the existing compiler's emitted binaries and oracle.
+# Compiler dependencies are needed for these optional comparisons.
 make -s LOG=flow
 python3 tests/check_model.py \
-  --binary build/tb0-b1-pe-flow-san0/tiny_npu --compiler ../compiler
-
-# Independent random/interactive TB checks (requires compiler dependencies).
+  --binary build/tb0-b1-simple-flow-san0/tiny_npu --compiler ../compiler
 make -s TB=1 BATCH=4 LOG=flow
-python3 tests/check_tb.py --binary build/tb1-b4-pe-flow-san0/tiny_npu --compiler ../compiler
+python3 tests/check_tb.py \
+  --binary build/tb1-b4-simple-flow-san0/tiny_npu --compiler ../compiler
 ```
 
-The built-in suite uses only Python's standard library. The optional compiler
-comparison needs the compiler's Python dependencies and `LOG=flow` or `both`.
-PE tests additionally check shared-wire identity, private register state, disabled
-cell holds, bias vs. feedback selection, no same-edge leakage, stage-order
-independence across register boundaries, malformed tags, and atomic overflow
-rejection. A hand-checked trace tests the four-lane POST schedule.
-Tests cover all implemented opcodes, partial tiles, batches 1–4, retained sums,
-forwarding, back-pressure, signed rounding, masked stores, malformed images,
-overflow, and invalid instruction/state rejection. Expected fault tests print
-error messages. Map tests check every region's first/last beat, exclusive end,
-alignment, and access to the final physical beat. The image loader helper
-checks every loaded byte and transactional rejection of malformed files.
-The optional compiler comparison includes a 4->100->100->1 network whose
-weights exceed the old 8 KiB region. On hosts that prohibit LeakSanitizer tracing, use
-`ASAN_OPTIONS=detect_leaks=0`; address and undefined-behavior checks remain enabled.
+Tests include masked writes, malformed images, bus ownership, atomic faults,
+PE timing, all activation modes, partial tiles, batches 1–4, retained sums,
+forwarding, back-pressure and independent per-k/output oracles. To compare a
+pre-consolidation PE executable, pass `--baseline-binary /path/to/tiny_npu` to
+`check_model.py` together with `--compiler`; this also compares full flow logs
+and cycle counts. Expected-fault tests print errors. On hosts that cannot run
+LeakSanitizer under tracing, use `ASAN_OPTIONS=detect_leaks=0`; ASan/UBSan remain
+active. The compiler and architecture diagram are separate project directories.

@@ -25,14 +25,11 @@ endif
 ifneq ($(origin FUSE),undefined)
 $(error FUSE is encoded by LOAD_OPERAND/FORWARD instructions, not a C-model build switch)
 endif
-BUILD := build/tb$(TB)-b$(BATCH)-pe-$(LOG)-san$(SANITIZE)
+BUILD := build/tb$(TB)-b$(BATCH)-simple-$(LOG)-san$(SANITIZE)
 BIN := $(BUILD)/tiny_npu
-SOURCES := bus.c framework.c logging.c isa.c controller.c instructions.c sram.c stream.c mac.c mac_pe.c activation.c activation_pe.c scale_clamp.c scale_pe.c npu_top.c main.c
-ifeq ($(TB),1)
-SOURCES += tb.c
-endif
-OBJECTS := $(SOURCES:%.c=$(BUILD)/%.o)
-CPPFLAGS += -DNPU_TB=$(TB) -DNPU_BATCH=$(BATCH) -DNPU_LOG_FLOW=$(if $(filter flow both,$(LOG)),1,0) -DNPU_LOG_PORTS=$(if $(filter ports both,$(LOG)),1,0)
+SOURCES := $(addprefix src/,bus.c controller.c sram.c mac.c activation.c scale_clamp.c npu.c sim.c main.c)
+OBJECTS := $(SOURCES:src/%.c=$(BUILD)/%.o)
+CPPFLAGS += -Iinclude -DNPU_TB=$(TB) -DNPU_BATCH=$(BATCH) -DNPU_LOG_FLOW=$(if $(filter flow both,$(LOG)),1,0) -DNPU_LOG_PORTS=$(if $(filter ports both,$(LOG)),1,0)
 CFLAGS ?= -O2 -g
 CFLAGS += -std=c99 -Wall -Wextra -Werror -MMD -MP
 ifeq ($(SANITIZE),1)
@@ -43,19 +40,15 @@ endif
 all: $(BIN)
 $(BIN): $(OBJECTS)
 	$(CC) $(OBJECTS) $(LDFLAGS) -o $@
-$(BUILD)/%.o: %.c
+$(BUILD)/%.o: src/%.c
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 run: $(BIN)
 	$(BIN) --sram "$(SRAM)" $(ARGS)
 test: $(BIN)
-	$(CC) $(CPPFLAGS) $(CFLAGS) -I. tests/check_bus.c bus.c framework.c logging.c $(LDFLAGS) -o $(BUILD)/check_bus
-	$(BUILD)/check_bus
-	$(CC) $(CPPFLAGS) $(CFLAGS) -I. tests/check_core.c $(filter-out main.c tb.c,$(SOURCES)) $(LDFLAGS) -o $(BUILD)/check_core
-	$(BUILD)/check_core
-	$(CC) $(CPPFLAGS) $(CFLAGS) -I. tests/check_pe.c $(filter-out main.c tb.c,$(SOURCES)) $(LDFLAGS) -o $(BUILD)/check_pe
-	$(BUILD)/check_pe
-	$(CC) $(CPPFLAGS) $(CFLAGS) -I. tests/check_image.c sram.c isa.c bus.c logging.c $(LDFLAGS) -o $(BUILD)/check_image
+	$(CC) $(CPPFLAGS) $(CFLAGS) tests/check_units.c $(filter-out src/main.c,$(SOURCES)) $(LDFLAGS) -o $(BUILD)/check_units
+	$(BUILD)/check_units
+	$(CC) $(CPPFLAGS) $(CFLAGS) tests/check_image.c $(filter-out src/main.c,$(SOURCES)) $(LDFLAGS) -o $(BUILD)/check_image
 	python3 tests/check_model.py --binary $(BIN) --loader-checker $(BUILD)/check_image
 clean:
 	rm -rf build
