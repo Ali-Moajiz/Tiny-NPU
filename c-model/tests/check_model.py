@@ -14,7 +14,7 @@ import tempfile
 
 
 def memory_constants():
-    text = (Path(__file__).resolve().parents[1] / 'datapath.h').read_text()
+    text = (Path(__file__).resolve().parents[1] / 'types.h').read_text()
     return {name: int(value, 16) for name, value in
             re.findall(r'^#define (\w+) (0x[0-9A-Fa-f]+)u$', text, re.M)}
 
@@ -277,16 +277,15 @@ class Checks:
                     assert metric(log,'cycles')==4*len(compilation.instructions)+dispatch
                     if baseline:
                         # Same 1 MiB image on the pre-PE model: compare numerics,
-                        # architectural work and the analytically expected cycle delta.
+                        # architectural work, cycle counts and complete flow traces.
                         current=self.binary
                         try:
                             self.binary=baseline.resolve();old_output,old_log=self.run(memory,data,batch)
                         finally: self.binary=current
                         assert old_output==actual
-                        for name in ('instructions','useful_macs','compute_cycles','bus_stall_cycles','sram_reads','sram_writes'):
+                        for name in ('cycles','instructions','useful_macs','compute_cycles','bus_stall_cycles','sram_reads','sram_writes'):
                             assert metric(log,name)==metric(old_log,name),(shape,batch,name)
-                        delta=sum((i.dims&15)+2+bool(i.flags&4)-2 for i in compilation.instructions if i.op==3)
-                        assert metric(log,'cycles')-metric(old_log,'cycles')==delta
+                        assert log==old_log, "Refactor changed the per-cycle flow trace"
                     if shape==(4,8,8,2) and batch==4 and not forwarding:
                         print('Compiler 4->8->8->2:',re.search(r'METRICS.*',log).group())
         print('Compiler integration: final output, independent tensor oracle, every PE accumulator and cycle formulas passed')

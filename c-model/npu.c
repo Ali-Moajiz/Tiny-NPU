@@ -1,9 +1,7 @@
-/* Top-level netlist. This is the only place that connects module ports. */
 #include "npu.h"
-#include "logging.h"
-#include <inttypes.h>
-#include <stdio.h>
+#include "sim.h"
 #include <string.h>
+/* Top-level netlist. This is the only place that connects module ports. */
 void npu_init(Npu *n)
 {
     memset(n, 0, sizeof *n);
@@ -98,11 +96,4 @@ bool npu_run(Npu *n, uint64_t max_cycles)
         n->error = true;
     }
     return !n->error;
-}
-void npu_print_metrics(const Npu *n)
-{
-    double compute = n->mac.regs.compute_cycles ? 100.0 * (double)n->mac.regs.useful_macs / (16.0 * (double)n->mac.regs.compute_cycles) : 0;
-    double whole = n->cycle ? 100.0 * (double)n->mac.regs.useful_macs / (16.0 * (double)n->cycle) : 0;
-    printf("METRICS cycles=%" PRIu64 " instructions=%" PRIu64 " compute_cycles=%" PRIu64 " useful_macs=%" PRIu64 " bus_stall_cycles=%" PRIu64 " sram_reads=%" PRIu64 " sram_writes=%" PRIu64 " compute_util=%.2f%% whole_util=%.2f%%\n",
-           n->cycle, n->controller.regs.instructions, n->mac.regs.compute_cycles, n->mac.regs.useful_macs, n->controller.regs.bus_stall_cycles, n->sram.regs.reads, n->sram.regs.writes, compute, whole);
 }

@@ -1,6 +1,41 @@
 #ifndef MAC_H
 #define MAC_H
-#include "mac_pe.h"
+#include "types.h"
+
+/* ---- One processing element ---- */
+
+/* One physical multiplier/accumulator cell. Operand registers live in its
+ * owning MAC block; shared row/column buses feed this combinational datapath. */
+typedef struct { int32_t accumulator; bool valid; } MacPeRegisters;
+/* Named combinational wires. This scalar datapath has no bus/host dependency. */
+typedef struct {
+    int8_t x, w;
+    int16_t product;
+    int32_t addend;
+    int64_t wide_sum; /* C guard width; accumulator storage stays INT32. */
+} MacPeDatapath;
+MacPeDatapath mac_pe_datapath(int8_t x, int8_t w, int32_t bias,
+                             int32_t accumulator, bool seed_bias);
+typedef struct
+{
+    struct {
+        const Operand8Bus *x, *w;
+        const Bias32Bus *bias;
+        const ControlBus *control;
+    } in;
+    struct { MacResultBus *sum; } out;
+} MacPePorts;
+typedef struct
+{
+    MacPeRegisters regs;
+    MacPePorts ports;
+    unsigned vector, neuron; /* Static instance coordinates. */
+    bool enabled; /* Combinational clock-enable, not another register. */
+    MacPeDatapath comb;
+} MacPe;
+extern const BlockOps mac_pe_ops;
+
+/* ---- Array/container ---- */
 
 typedef struct { Line128 operand[4]; bool loaded[4]; } OperandSlot;
 typedef struct {
@@ -28,4 +63,5 @@ typedef struct {
     } wires;
 } Mac;
 extern const BlockOps mac_ops;
+
 #endif

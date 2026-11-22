@@ -1,8 +1,6 @@
 #ifndef SRAM_H
 #define SRAM_H
-#include "framework.h"
-#include "signals.h"
-
+#include "types.h"
 typedef struct
 {
     Line128 memory[SRAM_LINES];
@@ -30,7 +28,5 @@ typedef struct
     SramPorts ports;
 } Sram;
 
-/* Host initialization only: exactly SRAM_LINES MSB-first 128-bit hex words. */
-bool sram_load_hex(Sram *, const char *path, char *error, size_t error_size);
 extern const BlockOps sram_ops;
 #endif

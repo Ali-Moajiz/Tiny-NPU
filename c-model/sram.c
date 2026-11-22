@@ -1,55 +1,9 @@
 #include "sram.h"
-#include "isa.h"
-#include "logging.h"
-#include <ctype.h>
+#include "sim.h"
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-bool sram_load_hex(Sram *s,const char *path,char *error,size_t error_size)
-{
-    FILE *file=fopen(path,"r");
-    if(!file) {snprintf(error,error_size,"cannot open SRAM image: %s",path);return false;}
-    /* Stage the image on the host heap; commit only after full validation. */
-    Line128 *memory=malloc(sizeof s->regs.memory);
-    if(!memory) {fclose(file);snprintf(error,error_size,"cannot allocate %u-byte SRAM staging image",SRAM_BYTES);return false;}
-    unsigned count=0,line_no=0;char text[256];bool ok=true;
-    while(fgets(text,sizeof text,file)) {
-        line_no++;
-        if(!strchr(text,'\n')&&!feof(file)) {ok=false;break;}
-        char *p=text;while(isspace((unsigned char)*p)) p++;
-        if(!*p||*p=='#'||(p[0]=='/'&&p[1]=='/')) continue;
-        if(count>=SRAM_LINES) {ok=false;break;}
-        if(strlen(p)<32) {ok=false;break;}
-        Line128 word={{0}};
-        for(unsigned i=0;i<32;i++) {
-            unsigned char ch=(unsigned char)p[i];unsigned v;
-            if(ch>='0'&&ch<='9') v=ch-'0';
-            else if(ch>='a'&&ch<='f') v=ch-'a'+10;
-            else if(ch>='A'&&ch<='F') v=ch-'A'+10;
-            else {ok=false;break;}
-            word.lane[3-i/8]=(word.lane[3-i/8]<<4)|v;
-        }
-        if(!ok) break;
-        p+=32;while(isspace((unsigned char)*p)) p++;
-        if(*p&&*p!='#'&&!(p[0]=='/'&&p[1]=='/')) {ok=false;break;}
-        memory[count++]=word;
-    }
-    bool read_failed=ferror(file)!=0;
-    int close_status=fclose(file);
-    if(read_failed||close_status) {
-        snprintf(error,error_size,"cannot read/close SRAM image: %s",path);
-        free(memory);return false;
-    }
-    if(!ok||count!=SRAM_LINES) {
-        snprintf(error,error_size,"invalid SRAM hex at line %u: expected exactly %u words of 32 hex digits (got %u)",line_no,SRAM_LINES,count);
-        free(memory);
-        return false;
-    }
-    memcpy(s->regs.memory,memory,sizeof s->regs.memory);
-    free(memory);
-    s->regs.response=(TileSignal){0};s->regs.reads=0;s->regs.writes=0;
-    return true;
-}
+
+/* ---- Single-port SRAM ---- */
+
 static void publish(void *instance,uint64_t cycle)
 { (void)cycle;Sram *s=instance;TileSignal_drive(s->ports.out.response,s->regs.response); }
 static bool check(void *instance,uint64_t cycle)

@@ -1,9 +1,83 @@
 #include "mac.h"
-#include "activation_pe.h"
-#include "logging.h"
+#include "sim.h"
 #include <stdio.h>
+#include <string.h>
+#include "activation.h"
 
-/* Operand-selection muxes and column readout; arithmetic lives in mac_pe.c. */
+/* ---- PE datapath and registers ---- */
+
+MacPeDatapath mac_pe_datapath(int8_t x, int8_t w, int32_t bias,
+                             int32_t accumulator, bool seed_bias)
+{
+    MacPeDatapath d;
+    d.x = x;
+    d.w = w;
+    d.product = (int16_t)((int)x * (int)w);
+    d.addend = seed_bias ? bias : accumulator;
+    d.wide_sum = (int64_t)d.addend + d.product;
+    return d;
+}
+
+static void pe_publish(void *instance, uint64_t cycle)
+{
+    (void)cycle;
+    MacPe *p = instance;
+    MacResult_drive(p->ports.out.sum, (MacResult){p->regs.accumulator, p->regs.valid});
+}
+static bool pe_evaluate(void *instance, uint64_t cycle)
+{
+    (void)cycle;
+    MacPe *p = instance;
+    Control c = Control_read(p->ports.in.control);
+    p->enabled = c.compute_en && p->vector < c.batch && p->neuron < c.neurons;
+    if (!p->enabled) return true; /* Clock-enable holds the accumulator. */
+    p->comb = mac_pe_datapath(Operand8_read(p->ports.in.x).value,
+                             Operand8_read(p->ports.in.w).value,
+                             Bias32_read(p->ports.in.bias).value,
+                             p->regs.accumulator, c.k == 0 && !c.accumulate);
+    return true;
+}
+static bool pe_check(void *instance, uint64_t cycle)
+{
+    MacPe *p = instance;
+    Control c = Control_read(p->ports.in.control);
+    if (p->enabled && (c.k != 0 || c.accumulate) && !p->regs.valid) {
+        log_error(cycle, "MAC PE", "feedback requires a valid accumulator neuron=%u vector=%u",
+                  p->neuron, p->vector);
+        return false;
+    }
+    if (p->enabled && (p->comb.wide_sum < INT32_MIN || p->comb.wide_sum > INT32_MAX)) {
+        log_error(cycle, "MAC PE", "INT32 overflow neuron=%u vector=%u", p->neuron, p->vector);
+        return false; /* Framework rejects the whole edge, including other PEs. */
+    }
+    return true;
+}
+static void pe_clock(void *instance, uint64_t cycle)
+{
+    MacPe *p = instance;
+    Control c = Control_read(p->ports.in.control);
+    if (logging_ports_enabled()) {
+        log_block_begin("MAC PE");
+        printf("  cell[%u][%u] enable=%u x=%d w=%d product=%d addend=%d acc=%d valid=%u\n",
+               p->vector, p->neuron, p->enabled,
+               Operand8_read(p->ports.in.x).value, Operand8_read(p->ports.in.w).value,
+               p->enabled ? p->comb.product : 0, p->enabled ? p->comb.addend : 0,
+               p->regs.accumulator, p->regs.valid);
+    }
+    if (p->enabled) {
+        p->regs.accumulator = (int32_t)p->comb.wide_sum;
+        p->regs.valid = true;
+        log_flow(cycle, "MAC PE", "PE", "pc=0x%05X k=%u r=%u v=%u acc=%d x=%d w=%d product=%d prior=%d",
+                 c.pc, c.k, p->neuron, p->vector, p->regs.accumulator,
+                 p->comb.x, p->comb.w, p->comb.product, p->comb.addend);
+    }
+    if (c.post_en && c.post_col + 1 == c.neurons) p->regs.valid = false;
+}
+const BlockOps mac_pe_ops = {.publish=pe_publish, .eval=pe_evaluate, .check=pe_check, .clock=pe_clock};
+
+/* ---- Array/container wiring and control ---- */
+
+/* Operand-selection muxes and column readout; arithmetic is defined in the PE section above. */
 static bool evaluate(void *instance, uint64_t cycle)
 {
     (void)cycle;
